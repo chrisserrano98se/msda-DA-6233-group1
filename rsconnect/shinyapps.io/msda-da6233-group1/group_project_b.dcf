@@ -1,0 +1,12 @@
+name: group_project_b
+title: group_project_b
+username: msda-da6233-group1
+account: msda-da6233-group1
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 16096933
+bundleId: 11193689
+url: https://msda-da6233-group1.shinyapps.io/group_project_b/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

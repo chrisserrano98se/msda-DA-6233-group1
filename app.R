@@ -1,0 +1,829 @@
+# Load necessary libraries
+library(shiny)
+library(dplyr)
+library(tidyverse)
+library(highcharter) 
+library(urbnmapr)
+
+#Data Sets
+
+#Timeline dataset
+timeline_df <- read.csv("opium_timeline.csv") 
+
+
+#This is used for the Map
+my_data = read.csv("Opiod_data.csv")
+
+#This formats data for the map
+prep_data = function(my_data) {
+  
+  df_clean = my_data |> 
+    mutate(
+      Location = str_to_title(trimws(Location)),
+      Location = str_replace(Location,
+                             "^Dist\\.? Of Columbia$",
+                             "District Of Columbia"),
+      Value    = as.numeric(Data)
+    ) |> 
+    filter(
+      !str_detect(Location, regex("^United States$", ignore_case = TRUE)),
+      !is.na(Value)
+    )
+  
+  # Mean per state-year
+  state_year = df_clean |> 
+    group_by(Location, TimeFrame) |> 
+    summarise(Value = mean(Value, na.rm = TRUE), .groups = "drop")
+  
+  years = sort(unique(state_year$TimeFrame))
+  
+  states_sf = get_urbn_map("states", sf = TRUE) |>
+    mutate(Location = state_name)
+  
+  list(
+    state_year = state_year,
+    states_sf  = states_sf,
+    years      = years,
+    vmin       = floor(min(state_year$Value, na.rm = TRUE)),
+    vmax       = ceiling(max(state_year$Value, na.rm = TRUE))
+  )
+}
+
+data_objects = prep_data(my_data)
+
+state_year = data_objects$state_year
+states_sf  = data_objects$states_sf
+all_years  = data_objects$years
+vmin       = data_objects$vmin
+vmax       = data_objects$vmax
+
+
+label_safe_palette = c(
+  "#e5f5f9",
+  "#99d8c9",
+  "#2ca25f",
+  "#006d2c"
+)
+
+ui <- fluidPage(
+  tags$head(
+    tags$style(HTML("
+            /* Styling for common elements */
+            .well { background-color: #ecf0f1; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px;}
+            h3 { color: #7F7F7F; font-weight: 600; } 
+
+            /* Styling for action buttons */
+            .btn-chart-select {
+                margin-top: 5px;
+                margin-bottom: 5px;
+                width: 100%; 
+                background-color: #4B8BBE;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 10px 15px;
+                font-weight: 500;
+                transition: background-color 0.3s ease, transform 0.1s ease;
+                text-align: left;
+            }
+            .btn-chart-select:hover {
+                background-color: #4B8BBE;
+                transform: translateY(-1px);
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+                color: white; 
+            }
+            .btn-chart-select:focus, .btn-chart-select:active:focus, .btn-chart-select:active {
+                background-color: #4B8BBE;
+                color: white;
+                outline: none;
+                box-shadow: 0 0 0 0.25rem rgba(75,139,190,1.0); 
+            }
+            /* Styling for the sidebar panel */
+            .well.sidebar-panel-content {
+                padding: 15px;
+                margin: 0;
+            }
+            /* Style to ensure chart content has top spacing */
+            .shiny-tab-content > .active {
+                padding-top: 20px; 
+            }
+              .member-info {
+                 display: flex;
+                 align-items: center;
+                 margin-bottom: 15px;
+                 padding: 10px;
+                 border-bottom: 1px solid #eee;
+             }
+             .member-img {
+                 /* --- UPDATED SIZE HERE --- */
+                 width: 80px;
+                 height: 80px;
+                 border-radius: 50%;
+                 margin-right: 15px;
+                 object-fit: cover;
+                 border: 2px solid #4B8BBE;
+             }
+        "))
+  ),
+  
+  # Apply the bslib theme directly to fluidPage for styling
+  theme = bslib::bs_theme(bootswatch = "flatly", primary = "#7F7F7F"), 
+  
+  # --- Main Application Header ---
+  div(
+    h1(strong("Opioid Crisis in the US")),
+    p("Analyzing death statistics and trends across the country."),
+    hr()
+  ),
+  
+  # --- Main Sidebar Layout ---
+  sidebarLayout(
+    sidebarPanel(
+      div(class = "well sidebar-panel-content", 
+          h4(""),
+          selectInput("main_view_selector", 
+                      "Select a Section:",
+                      choices = c(
+                        "1. Introduction" = "intro",
+                        "2. History" = "history",
+                        "3. US Map" = "us_map", 
+                        "4. Deaths Across the Country" = "deaths",
+                        "5. Characteristics" = "characteristics",
+                        "6. Policies" = "policies"
+                      ),
+                      selected = "intro"
+          ),
+          hr(),
+          
+          conditionalPanel(
+            condition = "input.main_view_selector == 'us_map'",
+              sliderInput(
+                inputId = "year",
+                label   = "Year",
+                min     = min(all_years),
+                max     = max(all_years),
+                value   = min(all_years),
+                step    = 1,
+                sep     = "",
+                animate = animationOptions(interval = 800, loop = TRUE)
+              ),
+              helpText("Use the slider or Play button to animate through years.")
+            ),
+          
+          
+          conditionalPanel(
+            # Condition checks the selected value of the main navigation input
+            condition = "input.main_view_selector == 'deaths'",
+            h4("Deaths Filters"),
+            actionButton("top5_btn", 
+                         "Top 5 States by Average Death Rate", 
+                         class = "btn-chart-select"),
+            actionButton("top5Line_btn", 
+                         "Top 5 States by Death Rate Across Time", 
+                         class = "btn-chart-select"),
+            actionButton("bottom5_btn", 
+                         "Bottom 5 States by Average Death Rate", 
+                         class = "btn-chart-select"),
+            actionButton("bottom5Line_btn", 
+                         "Bottom 5 States by Death Rate Across Time", 
+                         class = "btn-chart-select")
+          ),
+        
+          conditionalPanel(
+            condition = "input.main_view_selector == 'characteristics'",
+            h4("Characteristics Filters")
+          ),
+          
+          conditionalPanel(
+            condition = "input.main_view_selector == 'policies'",
+            h4("Policy Filters")
+          )
+      )
+    ),
+    
+    mainPanel(
+
+      tabsetPanel(
+        id = "main_content_tabs",
+        type = "hidden", 
+        tabPanel("intro",
+                 h3("DA-6233 - Evening Class - Group 1"),
+                 
+                 div(class = "member-info",
+                     tags$img(
+                       src = "Picture2.png",
+                       class = "member-img",
+                       alt = "Valerie Ceciliano"
+                     ),
+                     p("Valerie Ceciliano")
+                 ),
+                 
+                 div(class = "member-info",
+                     tags$img(
+                       src = "Picture1.png",
+                       class = "member-img",
+                       alt = "Marisa Flores"
+                     ),
+                     p("Marisa Flores")
+                 ),
+                 
+                 div(class = "member-info",
+                     tags$img(
+                       src = "https://placehold.co/50x50/4B8BBE/FFFFFF/png?text=MH",
+                       class = "member-img",
+                       alt = "Mark Hertzfeld II"
+                     ),
+                     p("Mark Hertzfeld II")
+                 ),
+                 
+                 div(class = "member-info",
+                     tags$img(
+                       src = "1763346699622~2.jpg",
+                       class = "member-img",
+                       alt = "Chris Serrano"
+                     ),
+                     p("Chris Serrano")
+                 )
+        ),
+        tabPanel("history",
+                 h3("History and Timeline"),
+                 highchartOutput("timeline", height = "600px")
+        ),
+        
+        tabPanel("us_map",
+                 h3("US map"),
+                 plotOutput("usMap", height = "600px")
+                 
+        ),
+        
+        tabPanel("deaths",
+                 h3("Deaths Across the Country"),
+                 highchartOutput("stateChart", height = "600px")
+                 
+        ),
+        
+        tabPanel("characteristics",
+                 h3("Characteristics Analysis"),
+                 highchartOutput("stockPlot", height = "400px")
+        ),
+        
+        tabPanel("policies",
+                 h3("Policies and Interventions"),
+                 highchartOutput("deathmap", height = "400px")
+        )
+      )
+    )
+  )
+)
+
+
+server <- function(input, output, session) {
+  
+  currentChartSelection <- reactiveVal("top5")
+  
+  observeEvent(input$main_view_selector, {
+    updateTabsetPanel(
+      session = session, 
+      inputId = "main_content_tabs", 
+      selected = input$main_view_selector 
+    )
+  })
+  
+
+  observeEvent(input$top5_btn, {
+    currentChartSelection("top5")
+  })
+  observeEvent(input$top5Line_btn, {
+    currentChartSelection("top5Line")
+  })
+  observeEvent(input$bottom5_btn, {
+    currentChartSelection("bottom5")
+  })
+  observeEvent(input$bottom5Line_btn, {
+    currentChartSelection("bottom5Line")
+  })
+  
+  #this sections is for the navigation buttons for deaths across us
+  output$chart_buttons <- renderUI({
+    selection <- currentChartSelection()
+    
+    base_class <- "btn-chart-select"
+    active_class <- paste(base_class, "btn-chart-select-active")
+    
+    top5_class <- if (selection == "top5") active_class else base_class
+    top5Line_class <- if (selection == "top5Line") active_class else base_class
+    bottom5_class <- if (selection == "bottom5") active_class else base_class
+    bottom5Line_class <- if (selection == "bottom5Line") active_class else base_class
+    
+    div(
+      actionButton("top5_btn", "top5bottom5", class = top5_class),
+      actionButton("top5Line_btn", "top5bottom5", class = top5Line_class),
+      actionButton("bottom5_btn", "top5bottom5", class = bottom5_class),
+      actionButton("bottom5Line_btn", "top5bottom5", class = bottom5Line_class),
+    )
+  })
+  
+  output$timeline <- renderHighchart({
+
+    #JS Functions for Timeline
+    
+    format_bce_labels <- JS("function() {
+    var year = Highcharts.dateFormat('%Y', this.value) * 1;
+    if (year < 1) {
+        var absoluteYear = Math.abs(this.value / 31536000000); 
+        if (absoluteYear > 5000) {
+            return Highcharts.dateFormat('%Y', this.value);
+        }
+        return absoluteYear.toFixed(0) + ' BCE';
+    }
+    return Highcharts.dateFormat('%Y', this.value);
+}")
+    
+    js_dim_other_labels <- JS("function() {
+  var chart = this.series.chart;
+  var currentPoint = this;
+  chart.series[0].points.forEach(function(point) {
+    if (point !== currentPoint && point.dataLabel) {
+      point.dataLabel.attr({
+        opacity: 0.2
+      });
+    }
+  });
+}")
+    
+    js_restore_labels <- JS("function() {
+  var chart = this.series.chart;
+  chart.series[0].points.forEach(function(point) {
+    if (point.dataLabel) {
+      point.dataLabel.attr({
+        opacity: 1
+      });
+    }
+  });
+}")
+    
+    timeline_df |>
+      hchart("timeline", hcaes(x = Date, name = Event)) |>
+      hc_add_theme(hc_theme_flat()) |>
+      hc_yAxis(
+        title = list(text = " "),
+        labels = list(
+          format = "{value}" 
+        )
+      ) |>
+      hc_xAxis(
+        type = "datetime", 
+        dateTimeLabelFormats = list(
+          format_bce_labels
+        )
+      ) |>
+      hc_title(text = "<b></b>") |>
+      hc_chart(
+        zoomType = 'x'
+      )  |>
+      
+      hc_plotOptions(
+        series = list(
+          animation = list(duration = 2000), 
+          dataLabels = list(
+            allowOverlap = TRUE,
+            format = '<span style="color:{point.color}; font-weight:bold;">{point.name}</span>',
+            style = list(textOutline = 'none', transition = 'opacity 0.3s ease-out') # Add transition for smooth effect
+          ),
+          point = list(
+            events = list(
+              mouseOver = js_dim_other_labels,
+              mouseOut = js_restore_labels
+            )
+          )
+        )
+      )  |>
+      hc_tooltip(
+        formatter = JS("function() {
+    var shouldShow = this.point.show_tooltip;
+
+    if (shouldShow === 'N') {
+      return false;
+    }
+
+    var htmlContent = 
+      '<div style=\"width: 350px; padding: 5px;\">' +
+        
+        '<div style=\"float: left; margin-right: 10px;\">' +
+          '<img src=\"' + this.point.Image + '\" width=\"120\" style=\"border-radius: 5px; box-shadow: 2px 2px 5px #aaa;\">' +
+        '</div>' +
+        '<div style=\"overflow: hidden;\">' +
+          '<span style=\"font-size: 16px; font-weight: bold;\">' + this.point.Event + '</span><br/>' +
+          '<span style=\"font-size: 12px; color: #555;\">' + this.point.Significance + '</span>' +
+        '</div>' +
+      '<div style=\"clear: both;\"></div>' +
+      '</div><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>';
+    return htmlContent;
+  }"),
+        hideDelay = 10,
+        enabled = TRUE,
+        trigger = "click",
+        headerFormat = "",
+        useHTML = TRUE,
+        style = list(pointerEvents = 'auto'))
+  })
+  
+# Top 5 / Bottom 5 Section
+  output$stateChart <- renderHighchart({
+    
+    selected_chart <- currentChartSelection()
+    
+     if (selected_chart == "top5") {
+      
+      df_trends = my_data |> 
+        mutate(
+          Location = str_to_title(trimws(Location)),
+          Location = str_replace(Location, "^Dist\\. Of Columbia$", "District Of Columbia"),
+          Value    = parse_number(Data)
+        ) |> 
+        filter(
+          !str_detect(Location, regex("^United States$", ignore_case = TRUE)),
+          !is.na(Value)
+        )
+      
+      # Top 5 states by average death rate
+      top5_ranked_data = df_trends |> 
+        group_by(Location) |> 
+        summarise(
+          avg_death_rate = mean(Value, na.rm = TRUE),
+          .groups = "drop"
+        ) |> 
+        arrange(desc(avg_death_rate)) |> 
+        slice_head(n = 5)
+      
+      top5_states_ranked = top5_ranked_data$Location
+      
+      df_top5 = df_trends |> 
+        filter(Location %in% top5_states_ranked)   # <-- fixed here
+      
+      series_data = top5_ranked_data |> 
+        transmute(
+          name  = Location,
+          y     = avg_death_rate
+        ) |> 
+        list_parse2() 
+      
+      bar_chart = highchart() |> 
+        hc_chart(type = "column") |> 
+        hc_title(text = "Top 5 Locations by Average Opioid Death Rate") |> 
+        hc_subtitle(text = "Average deaths per 100k (1999-2023)") |> 
+        hc_xAxis(
+          type = "category",
+          title = list(text = "State"),
+          labels = list(style = list(fontSize = "12px"))
+        ) |> 
+        hc_yAxis(
+          min = 0,
+          title = list(text = "Deaths per 100k"),
+          gridLineDashStyle = "Dash"
+        ) |> 
+        hc_plotOptions(column = list(
+          colorByPoint = TRUE,
+          borderRadius = 5,
+          pointPadding = 0.05,
+          groupPadding = 0.08,
+          dataLabels = list(
+            enabled = TRUE,
+            formatter = JS("function(){ return Highcharts.numberFormat(this.y, 1); }"),
+            style = list(fontWeight = "bold")
+          )
+        )) |> 
+        hc_add_series(
+          name = "Avg Death Rate",
+          data = series_data,
+          showInLegend = FALSE
+        ) |> 
+        hc_tooltip(
+          useHTML = TRUE,
+          headerFormat = "<span style='font-size:13px'><b>{point.key}</b></span><br/>",
+          pointFormat = "Average deaths: <b>{point.y:.1f}</b> per 100k"
+        ) |> 
+        hc_exporting(enabled = TRUE) |> 
+        hc_credits(enabled = FALSE) |> 
+        hc_add_theme(hc_theme_flat())
+      
+      bar_chart
+      
+    
+    } 
+    else if (selected_chart == "bottom5") {
+      df_trends = my_data |> 
+        mutate(
+          Location = str_to_title(trimws(Location)),
+          Location = str_replace(Location, "^Dist\\. Of Columbia$", "District Of Columbia"),
+          Value    = parse_number(Data)
+        ) |> 
+        filter(
+          !str_detect(Location, regex("^United States$", ignore_case = TRUE)),
+          !is.na(Value)
+        )
+      
+      # Average death rate by state across all years
+      location_avg = df_trends |> 
+        group_by(Location) |> 
+        summarise(
+          avg_death_rate = mean(Value, na.rm = TRUE),
+          .groups = "drop"
+        )
+      
+      # Bottom 5 states (lowest average death rate)
+      bottom5_locations = location_avg |> 
+        arrange(avg_death_rate) |> 
+        slice(1:5)
+      
+      series_data_bar = bottom5_locations |> 
+        transmute(
+          name = Location,
+          y    = avg_death_rate
+        ) |> 
+        list_parse2()
+      
+      bar_chart_bottom5 = highchart() |> 
+        hc_chart(type = "column") |> 
+        hc_title(text = "Bottom 5 Locations by Average Opioid Death Rate") |> 
+        hc_subtitle(text = "Average deaths per 100k (1999-2023)") |> 
+        hc_xAxis(
+          type = "category",
+          title = list(text = "State"),
+          labels = list(style = list(fontSize = "12px"))
+        ) |> 
+        hc_yAxis(
+          min = 0,
+          title = list(text = "Deaths per 100k"),
+          gridLineDashStyle = "Dash"
+        ) |> 
+        hc_plotOptions(column = list(
+          colorByPoint = TRUE,     
+          borderRadius = 5,
+          pointPadding = 0.05,
+          groupPadding = 0.08,
+          dataLabels = list(
+            enabled = TRUE,
+            formatter = JS("function(){ return Highcharts.numberFormat(this.y, 1); }"),
+            style = list(fontWeight = "bold")
+          )
+        )) |> 
+        hc_add_series(
+          name = "Avg Death Rate",
+          data = series_data_bar,
+          showInLegend = FALSE
+        ) |> 
+        hc_tooltip(
+          useHTML = TRUE,
+          headerFormat = "<span style='font-size:13px'><b>{point.key}</b></span><br/>",
+          pointFormat = "Average deaths: <b>{point.y:.1f}</b> per 100k"
+        ) |> 
+        hc_exporting(enabled = TRUE) |> 
+        hc_credits(enabled = FALSE) |> 
+        hc_add_theme(hc_theme_flat())
+      
+      bar_chart_bottom5
+    }
+    
+    else if (selected_chart == "top5Line") {
+      df_trends = my_data |> 
+        mutate(
+          Location = str_to_title(trimws(Location)),
+          Location = str_replace(Location, "^Dist\\. Of Columbia$", "District Of Columbia"),
+          Value    = parse_number(Data)   
+        ) |>
+        filter(
+          !str_detect(Location, regex("^United States$", ignore_case = TRUE)),
+          !is.na(Value)
+        )
+      
+      
+      top5_ranked_data = df_trends |>
+        group_by(Location) |>
+        summarise(
+          avg_death_rate = mean(Value, na.rm = TRUE),
+          .groups = "drop"
+        ) |>
+        arrange(desc(avg_death_rate)) |>
+        slice_head(n = 5)
+      
+      top5_states = top5_ranked_data$Location
+      
+      
+      df_top5 = df_trends |>
+        filter(Location %in% top5_states)
+      
+      national_avg = df_trends |> 
+        group_by(TimeFrame) |> 
+        summarise(Value = mean(Value, na.rm = TRUE), .groups = "drop")
+      
+      
+      y_min = floor(min(df_top5$Value, na.rm = TRUE))
+      y_max = ceiling(max(df_top5$Value, na.rm = TRUE))
+      
+      # build chart
+      line_chart = highchart() |> 
+        hc_title(text = "Opioid Overdose Death Rates — Top 5 States (1999–2023)") |> 
+        hc_subtitle(text = "Each line shows a state's trend; solid black = national average") |> 
+        hc_xAxis(title = list(text = "Year"))|> 
+        hc_yAxis(title = list(text = "Deaths per 100k"), min = y_min, max = y_max)
+      
+      top5_states_ranked = top5_ranked_data$Location   
+      
+      for (st in top5_states_ranked) {   
+        st_data = df_top5 |> 
+          filter(Location == st) |> 
+          arrange(TimeFrame)
+        
+        last_year = max(st_data$TimeFrame, na.rm = TRUE)
+        
+        line_chart = line_chart |> 
+          hc_add_series(
+            data  = st_data,
+            type  = "line",
+            hcaes(x = TimeFrame, y = Value),
+            name  = st,
+            dataLabels = list(
+              enabled = TRUE,
+              formatter = JS(sprintf(
+                "function(){ if(this.x === %d) return '%s'; return null; }",
+                last_year, st
+              )),
+              align = "left", x = 5, y = 0
+            )
+          )
+      }
+      
+      line_chart = line_chart |> 
+        hc_add_series(
+          data = national_avg,
+          type = "line",
+          hcaes(x = TimeFrame, y = Value),
+          name = "National Avg",
+          color = "black",
+          lineWidth = 3,
+          marker = list(enabled = FALSE)
+        ) |> 
+        hc_tooltip(
+          shared = FALSE,      
+          useHTML = TRUE,
+          formatter = JS(
+            "function() {
+         return '<b>' + this.series.name + '</b><br/>' +
+                'Year: ' + this.x + '<br/>' +
+                'Rate: ' + Highcharts.numberFormat(this.y, 1) + ' per 100k';
+       }"
+          )
+        ) |> 
+        hc_legend(align = "center", verticalAlign = "bottom") |> 
+        hc_exporting(enabled = TRUE) |> 
+        hc_add_theme(hc_theme_flat())
+      
+      line_chart
+    }
+    
+    else if (selected_chart == "bottom5Line")
+    {
+      df_trends = my_data |>
+        mutate(
+          Location = str_to_title(trimws(Location)),
+          Location = str_replace(Location, "^Dist\\. Of Columbia$", "District Of Columbia"),
+          Value    = parse_number(Data)   # numeric overdose rate
+        ) |>
+        filter(
+          !str_detect(Location, regex("^United States$", ignore_case = TRUE)),
+          !is.na(Value)
+        )
+      
+      
+      bottom5_ranked_data = df_trends |>
+        group_by(Location) |>
+        summarise(
+          avg_death_rate = mean(Value, na.rm = TRUE),
+          .groups = "drop"
+        ) |>
+        arrange(avg_death_rate) |>      # ascending → lowest first
+        slice_head(n = 5)
+      
+      bottom5_states = bottom5_ranked_data$Location
+      
+      
+      df_bottom5 = df_trends |>
+        filter(Location %in% bottom5_states)
+      
+      
+      national_avg = df_trends |>
+        group_by(TimeFrame) |>
+        summarise(Value = mean(Value, na.rm = TRUE), .groups = "drop")
+      
+      
+      y_min = floor(min(df_bottom5$Value, na.rm = TRUE))
+      y_max = ceiling(max(df_bottom5$Value, na.rm = TRUE))
+      
+      line_chart_bottom5 = highchart() |>
+        hc_title(text = "Opioid Overdose Death Rates — Bottom 5 States (1999–2023)") |>
+        hc_subtitle(text = "Each line shows a state's trend; solid black = national average") |>
+        hc_xAxis(title = list(text = "Year")) |>
+        hc_yAxis(title = list(text = "Deaths per 100k"), min = y_min, max = y_max)
+      
+      bottom5_states_ranked = bottom5_ranked_data$Location   
+      
+      for (st in bottom5_states_ranked) {
+        
+        st_data = df_bottom5 |>
+          filter(Location == st) |>
+          arrange(TimeFrame)
+        
+        last_year = max(st_data$TimeFrame, na.rm = TRUE)
+        
+        line_chart_bottom5 = line_chart_bottom5 |>
+          hc_add_series(
+            data  = st_data,
+            type  = "line",
+            hcaes(x = TimeFrame, y = Value),
+            name  = st,
+            dataLabels = list(
+              enabled = TRUE,
+              formatter = JS(sprintf(
+                "function(){ if(this.x === %d) return '%s'; return null; }",
+                last_year, st
+              )),
+              align = "left", x = 5, y = 0
+            )
+          )
+      }
+      
+      line_chart_bottom5 = line_chart_bottom5 |>
+        hc_add_series(
+          data = national_avg,
+          type = "line",
+          hcaes(x = TimeFrame, y = Value),
+          name = "National Avg",
+          color = "black",
+          lineWidth = 3,
+          marker = list(enabled = FALSE)
+        ) |>
+        hc_tooltip(
+          shared   = FALSE,      
+          useHTML  = TRUE,
+          formatter = JS(
+            "function() {
+         return '<b>' + this.series.name + '</b><br/>' +
+                'Year: ' + this.x + '<br/>' +
+                'Rate: ' + Highcharts.numberFormat(this.y, 1) + ' per 100k';
+       }"
+          )
+        ) |>
+        hc_legend(align = "center", verticalAlign = "bottom") |>
+        hc_exporting(enabled = TRUE) |>
+        hc_add_theme(hc_theme_flat())
+      
+      line_chart_bottom5
+    }
+    else {
+      # Fallback case 
+      highchart() |> hc_title(text = "Select a chart view.")
+    }
+  })
+  
+#Map Section
+  output$usMap = renderPlot({
+    
+    df_year = state_year |> 
+      filter(TimeFrame == input$year)
+    
+    map_data_sf = states_sf |> 
+      left_join(df_year, by = "Location")
+    
+    ggplot(map_data_sf) +
+      geom_sf(aes(fill = Value), color = "white", linewidth = 0.3) +
+      geom_sf_text(
+        aes(label = ifelse(is.na(Value), "", sprintf("%.1f", Value))),
+        size = 2.8,
+        color = "black",          # readable everywhere
+        fontface = "bold"
+      ) +
+      scale_fill_gradientn(
+        colors = label_safe_palette,
+        limits = c(vmin, vmax),
+        name = "Deaths per 100k",
+        na.value = "grey90"
+      ) +
+      labs(
+        title    = "Opioid Overdose Death Rate by State",
+        subtitle = paste("Year:", input$year),
+        caption  = "Source: CDC WONDER",
+        x = NULL, y = NULL
+      ) +
+      theme_minimal(base_size = 14) +
+      theme(
+        panel.grid = element_blank(),
+        legend.position = "right"
+      )
+  })
+}
+
+# Run the application
+shinyApp(ui = ui, server = server)
+
+

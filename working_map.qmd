@@ -1,0 +1,58 @@
+```{r}
+library(highcharter)
+library(dplyr)
+library(readr)
+
+# --- Define a dummy data frame for testing if you don't have the CSV yet ---
+# If you have your CSV, skip this block and keep the read_csv line.
+# opioid_data <- data.frame(
+#   STATE_CODE = c("AL", "AZ", "CA", "TX", "NY", "FL"),
+#   Data = c(15.5, 25.1, 10.9, 8.4, 18.2, 21.0),
+#   TimeFrame = c(2023, 2023, 2023, 2023, 2023, 2023)
+# )
+# --------------------------------------------------------------------------
+
+# 1. Read the CSV file
+opioid_data <- read_csv("Opiod_Data_Combined_for_map.csv") # **MAKE SURE THIS FILE EXISTS**
+
+# 2. Prepare Data
+latest_year <- max(opioid_data$TimeFrame)
+
+map_data <- opioid_data %>%
+  filter(TimeFrame == latest_year, Fips != "US") %>%
+  mutate(
+    # Create the highcharts map key: 'us-' + lowercase state code
+    key = paste0("us-", tolower(STATE_CODE)),
+    Data = as.numeric(Data)
+  ) %>%
+  select(key, value = Data, state = STATE_CODE, year = TimeFrame)
+
+
+# 3. Create the Choropleth Map
+hcmap("countries/us/us-all",
+      data = map_data,
+      joinBy = c("hc-key", "key"),
+      value = "value",
+      name = "Opioid Death Rate"
+) %>%
+  # 🎯 **FOCUS ON THIS SECTION FOR THE FIX**
+  # Ensure all parameters passed to hc_colorAxis are correctly formatted lists
+  hc_colorAxis(
+    # Use color_stops function, which returns a correctly named list for stops
+    stops = color_stops(
+      n = 10,
+      # Defining the colors from low rate (light blue) to high rate (dark red)
+      colors = c("#CCE5FF", "#FF3333") 
+    ),
+    title = list(text = "Opioid Death Rate (per 100k)"),
+    # Set the minimum and maximum value for the color scale (optional but good practice)
+    min = min(map_data$value), 
+    max = max(map_data$value)
+  ) %>%
+  hc_title(
+    text = paste("Opioid Death Rate by State (Year:", latest_year, ")")
+  ) %>%
+  hc_tooltip(
+    pointFormat = "{point.name}<br>Rate: **{point.value}**"
+  ) 
+```
