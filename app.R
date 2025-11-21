@@ -14,6 +14,7 @@ timeline_df <- read.csv("opium_timeline.csv")
 #This is used for the Map
 my_data = read.csv("Opiod_data.csv")
 
+
 #This formats data for the map
 prep_data = function(my_data) {
   
@@ -211,7 +212,7 @@ ui <- fluidPage(
                  
                  div(class = "member-info",
                      tags$img(
-                       src = "Picture2.png",
+                       src = "472E972F-A591-4D3A-A064-EEE19AB678B2.jpeg",
                        class = "member-img",
                        alt = "Valerie Ceciliano"
                      ),
@@ -233,12 +234,12 @@ ui <- fluidPage(
                        class = "member-img",
                        alt = "Mark Hertzfeld II"
                      ),
-                     p("Mark Hertzfeld II")
+                     p("Mark Hertzfeld II - The Return of Mark Hertzfeld")
                  ),
                  
                  div(class = "member-info",
                      tags$img(
-                       src = "1763346699622~2.jpg",
+                       src = "1763748509654~2.jpg",
                        class = "member-img",
                        alt = "Chris Serrano"
                      ),
@@ -366,11 +367,7 @@ server <- function(input, output, session) {
       hchart("timeline", hcaes(x = Date, name = Event)) |>
       hc_add_theme(hc_theme_flat()) |>
       hc_yAxis(
-        title = list(text = " "),
-        labels = list(
-          format = "{value}" 
-        )
-      ) |>
+        visible = FALSE) |>
       hc_xAxis(
         type = "datetime", 
         dateTimeLabelFormats = list(
