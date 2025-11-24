@@ -431,6 +431,19 @@ ui <- fluidPage(
                    column(width = 4, highchartOutput("aDeath", height = "300px")),
                    column(width = 4, highchartOutput("bDeath", height = "300px")),
                    column(width = 4, highchartOutput("cDeath", height = "300px"))
+                 ),
+                 fluidRow(
+                   column(width = 6, p("Source:"))
+                   
+                 ),
+                 fluidRow(
+                   column(width = 6, p("U.S. Census Bureau population estimates for July 1, 2021"))
+                   
+                 ),
+                 fluidRow(
+                   
+                   column(width = 6, p("Americas Health Rankings - 2023 Annual Report"))
+                   
                  )
                  
         
@@ -1106,7 +1119,7 @@ output$bPop <- renderHighchart({
   
   if (selected_pie_chart == "top3char") {
     
-    population_pie_chart('District of Columbia:',"Washington D.C.")
+    population_pie_chart('Washington D.C.',"Washington D.C.")
         
   }
   else if (selected_pie_chart == "bottom3char") {
