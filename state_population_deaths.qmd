@@ -1,0 +1,183 @@
+---
+title: "opioid_state_deaths"
+format: html
+editor: visual
+---
+
+```{r}
+#| label = "setup",
+#| include = FALSE
+# 1) Load packages
+# - tidyverse: data wrangling + ggplot2 plotting
+# - scales: nice percent formatting for labels
+
+pacman::p_load(tidyverse, ggtext, png, jpeg)
+theme_set(theme_minimal())
+library(dplyr)
+library(ggplot2)
+library(showtext)
+library(sysfonts)
+library(scales)
+
+
+```
+
+```{r}
+#WV 
+death_df = read_csv("opioid_death_demographics_NVP.csv")
+
+death_df_race <- death_df |>
+  filter(Measure %in% 
+           c('Drug Deaths - American Indian/Alaska Native',
+             'Drug Deaths - Asian',
+             'Drug Deaths - Black',
+             'Drug Deaths - Hawaiian/Pacific Islander',
+             'Drug Deaths - Hispanic',
+             'Drug Deaths - Multiracial',
+             'Drug Deaths - White'))
+  
+  
+death_df_race |>
+  filter(State %in% c('WV'), Year == 2021) |>
+  hchart(type = "pie", hcaes(x = Measure, y = Value, group = State )) |>
+  hc_title(
+    text = "West Virginia Opioid deaths by race",
+    align = "center",
+    style = list(color = 'darkblue', fontWeight = "bold", fontSize = "18px")) |>
+  hc_subtitle(
+    text = "Top 3 highest nationwide",
+    align = "center",
+    style = list(color = 'gray', fontsize = "14px", fontsytle = "italic")) |>
+  hc_tooltip(
+    pointFormat = "<b>{point.name}<b>: {point.y} deaths ({point.percentage:.1f}%)",
+    useHTML = TRUE,
+    style = list(fontSize ="13px")
+  )
+                      
+
+```
+
+```{r}
+#DE
+
+death_df_race |>
+  filter(State %in% c('DE'), Year == 2021) |>
+   hchart(type = "pie", hcaes(x = Measure, y = Value, group = State )) |>
+  hc_title(
+    text = "Delaware Opioid deaths by race",
+    align = "center",
+    style = list(color = 'darkblue', fontWeight = "bold", fontSize = "18px")) |>
+   hc_subtitle(
+    text = "Top 3 highest nationwide",
+    align = "center",
+    style = list(color = 'gray', fontsize = "14px", fontsytle = "italic")) |>
+  hc_tooltip(
+    pointFormat = "<b>{point.name}<b>: {point.y} deaths ({point.percentage:.1f}%)",
+    useHTML = TRUE,
+    style = list(fontSize ="13px")
+  )
+
+```
+
+```{r}
+
+#DC
+death_df_race |>
+  filter(State %in% c('DC'), Year == 2021) |>
+   hchart(type = "pie", hcaes(x = Measure, y = Value, group = State )) |>
+  hc_title(
+    text = "District of Columbia Opioid deaths by race",
+    align = "center",
+    style = list(color = 'darkblue', fontWeight = "bold", fontSize = "18px")) |>
+   hc_subtitle(
+    text = "Top 3 highest nationwide",
+    align = "center",
+    style = list(color = 'gray', fontsize = "14px", fontsytle = "italic")) |>
+  hc_tooltip(
+    pointFormat = "<b>{point.name}<b>: {point.y} deaths ({point.percentage:.1f}%)",
+    useHTML = TRUE,
+    style = list(fontSize ="13px")
+  )
+
+```
+
+```{r}
+#NE
+death_df_race |>
+  filter(State %in% c('NE'), Year == 2021) |>
+   hchart(type = "pie", hcaes(x = Measure, y = Value, group = State )) |>
+  hc_title(
+    text = "Nebraska Opioid deaths by race",
+    align = "center",
+    style = list(color = 'darkblue', fontWeight = "bold", fontSize = "18px")) |>
+   hc_subtitle(
+    text = "Lowest 3 nationwide",
+    align = "center",
+    style = list(color = 'gray', fontsize = "14px", fontsytle = "italic")) |>
+  hc_tooltip(
+    pointFormat = "<b>{point.name}<b>: {point.y} deaths ({point.percentage:.1f}%)",
+    useHTML = TRUE,
+    style = list(fontSize ="13px")
+  )
+```
+
+```{r}
+
+#SD
+death_df_race |>
+  filter(State %in% c('SD'), Year == 2021) |>
+   hchart(type = "pie", hcaes(x = Measure, y = Value, group = State )) |>
+  hc_title(
+    text = "South Dakota Opioid deaths by race",
+    align = "center",
+    style = list(color = 'darkblue', fontWeight = "bold", fontSize = "18px")) |>
+  hc_subtitle(
+    text = "Lowest 3 nationwide",
+    align = "center",
+    style = list(color = 'gray', fontsize = "14px", fontsytle = "italic")) |>
+   hc_tooltip(
+    pointFormat = "<b>{point.name}<b>: {point.y} deaths ({point.percentage:.1f}%)",
+    useHTML = TRUE,
+    style = list(fontSize ="13px")
+  )
+
+```
+
+```{r}
+
+#IA
+death_df_race |>
+  filter(State %in% c('IA'), Year == 2021) |>
+  hchart(type = "pie", hcaes(x = Measure, y = Value, group = State )) |>
+  hc_title(
+    text = "Iowa Opioid deaths by race",
+    align = "center",
+    style = list(color = 'darkblue', fontWeight = "bold", fontSize = "18px")) |>
+  hc_subtitle(
+    text = "Lowest 3 nationwide",
+    align = "center",
+    style = list(color = 'gray', fontsize = "14px", fontsytle = "italic")) |>
+  hc_tooltip(
+    pointFormat = "<b>{point.name}<b>: {point.y} deaths ({point.percentage:.1f}%)",
+    useHTML = TRUE,
+    style = list(fontSize ="13px")
+  )
+
+death_df_race |>
+  filter(State %in% c('NE'), Year == 2021) |>
+  mutate(Value = 1) |>
+  hchart(type = "pie", hcaes(x = Measure, y = Value, group = State)) |>
+  hc_tooltip(enabled = FALSE) |> # Better way to disable tooltip completely
+  hc_add_theme(hc_theme_flat()) |>
+  hc_plotOptions(
+    pie = list(
+      size = 0,                # Hide the pie slices
+      showInLegend = TRUE,     # <--- CRITICAL: Force legend items to show
+      dataLabels = list(enabled = FALSE),
+      center = list("50%", "50%") # Center alignment (doesn't matter much if size is 0)
+    )
+  ) |>
+  hc_legend(enabled = TRUE) |> # Ensure legend global switch is on
+  hc_chart(height = 160)
+
+```
