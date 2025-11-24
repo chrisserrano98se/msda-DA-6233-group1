@@ -1048,13 +1048,13 @@ output$cDeath <- renderHighchart({
   
   if (selected_pie_chart == "top3char") {
     
-    death_rate_pie_chart("DE")
+    death_rate_pie_chart("MD")
       
     
   }
   else if (selected_pie_chart == "bottom3char") {
   
-    death_rate_pie_chart("NE")
+    death_rate_pie_chart("HI")
     }
   
 })
@@ -1120,11 +1120,11 @@ output$cPop <- renderHighchart({
   
   if (selected_pie_chart == "top3char") {
     
-    population_pie_chart("Delaware","Delaware")
+    population_pie_chart("Maryland","Maryland")
   }
   else if (selected_pie_chart == "bottom3char") {
     
-    population_pie_chart("Iowa","Iowa")
+    population_pie_chart("Hawaii","Hawaii")
   }
 })
 
