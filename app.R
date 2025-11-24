@@ -135,7 +135,7 @@ population_pie_chart <- function(input_state, display_state)
     hc_title(
       text = display_state,
       align = "center",
-      style = list(color = '#ecf0f1', fontWeight = "bold", fontSize = "18px")) |>
+      style = list(color = '#7f7f7f', fontWeight = "bold", fontSize = "18px")) |>
     hc_tooltip(
       pointFormat = "<b>{point.name}<b>: {point.y} Total Population ({point.percentage:.1f}%)",
       useHTML = TRUE,
