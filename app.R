@@ -95,7 +95,7 @@ death_rate_pie_chart <- function(input_state) {
       style = list(fontSize ="13px") ) |>
     hc_legend(enabled = FALSE) |> 
     hc_add_theme(hc_theme_flat()) |>
-    hc_colors(c("#f1c40f", "#2fcc71", "#e74b3c","#9b59b6", "#34495e","#2fcc71","#3498db")) |>
+    hc_colors(c("#f1c40f", "#e67e22", "#e74b3c","#9b59b6", "#34495e","#2fcc71","#3498db")) |>
     hc_plotOptions(
       pie = list(
         size = 200,                # Force the pie to be exactly 200px diameter
