@@ -81,6 +81,99 @@ label_safe_palette = c(
   "#006d2c"
 )
 
+death_rate_pie_chart <- function(input_state) {
+  death_df_race |>
+    filter(State %in% c(input_state), Year == 2021) |>
+    hchart(type = "pie", hcaes(x = Measure, y = Value, group = State )) |>
+    hc_title(
+      text = "",
+      align = "center",
+      style = list(color = 'darkblue', fontWeight = "bold", fontSize = "18px")) |>
+    hc_tooltip(
+      pointFormat = "<b>{point.name}<b>: {point.y} deaths ({point.percentage:.1f}%)",
+      useHTML = TRUE,
+      style = list(fontSize ="13px") ) |>
+    hc_legend(enabled = FALSE) |> 
+    hc_add_theme(hc_theme_flat()) |>
+    hc_colors(c("#f1c40f", "#2fcc71", "#e74b3c","#9b59b6", "#34495e","#2fcc71","#3498db")) |>
+    hc_plotOptions(
+      pie = list(
+        size = 200,                # Force the pie to be exactly 200px diameter
+        center = list("50%", "50%"), # Force the pie to be exactly in the middle
+        dataLabels = list(
+          enabled = TRUE,           # Turn them on
+          distance = -30,           # Negative value moves text INSIDE the slice
+          format = "{point.percentage:.0f}%", # Show just the number (e.g., "45%")
+          style = list(
+            fontSize = "12px", 
+            textOutline = "none",   # Remove the white glow/stroke
+            color = "white"         # White text is usually best on dark slices
+          ),
+          filter = list(
+            property = "percentage",
+            operator = ">",
+            value = 5
+          ) # Disable labels to prevent auto-resizing logic
+        ) # Disable labels to prevent auto-resizing logic
+      )
+    ) |>
+    hc_chart(
+      marginTop = 50,     # Reserve exactly 50px for the title area
+      marginBottom = 20,  # Reserve exactly 20px for the bottom
+      spacingTop = 0,
+      spacingBottom = 0
+    )
+}
+
+population_pie_chart <- function(input_state, display_state)
+{
+  df |>
+    filter(State %in% c(input_state)) |>
+    group_by(Formatted_race, State, Color) |>
+    summarise(total_population = sum(Population)) |>
+    hchart(type = "pie", hcaes(x = Formatted_race, y = total_population, group = State,color = Color )) |>
+    hc_title(
+      text = display_state,
+      align = "center",
+      style = list(color = '#ecf0f1', fontWeight = "bold", fontSize = "18px")) |>
+    hc_tooltip(
+      pointFormat = "<b>{point.name}<b>: {point.y} Total Population ({point.percentage:.1f}%)",
+      useHTML = TRUE,
+      style = list(fontSize ="13px")) |>
+    hc_legend(enabled = FALSE) |> 
+    hc_add_theme(hc_theme_flat()) |>
+    hc_colors(c("#f1c40f", "#2fcc71", "#e74b3c","#9b59b6", "#34495e","#2fcc71","#3498db")) |>
+    hc_plotOptions(
+      pie = list(
+        size = 200,                # Force the pie to be exactly 200px diameter
+        center = list("50%", "50%"), # Force the pie to be exactly in the middle
+        dataLabels = list(
+          enabled = TRUE,           # Turn them on
+          distance = -30,           # Negative value moves text INSIDE the slice
+          format = "{point.percentage:.0f}%", # Show just the number (e.g., "45%")
+          style = list(
+            fontSize = "12px", 
+            textOutline = "none",   # Remove the white glow/stroke
+            color = "white"         # White text is usually best on dark slices
+          ),
+          filter = list(
+            property = "percentage",
+            operator = ">",
+            value = 5
+          ) # Disable labels to prevent auto-resizing logic
+        )
+      )
+      
+    ) |>
+    hc_chart(
+      marginTop = 50,     # Reserve exactly 50px for the title area
+      marginBottom = 20,  # Reserve exactly 20px for the bottom
+      spacingTop = 0,
+      spacingBottom = 0
+    )
+}
+
+
 ui <- fluidPage(
   tags$head(
     tags$style(HTML("
@@ -142,6 +235,27 @@ ui <- fluidPage(
              .pie-charts {
              background-color: #ecf0f1;
              }
+             @keyframes fadeIn {
+  0% {
+    opacity: 0; /* Start completely transparent */
+  }
+  100% {
+    opacity: 1; /* End fully opaque */
+  }
+}
+
+.fade-in-arrow {
+  /* Apply the animation */
+  animation-name: fadeIn;
+  /* Duration of the animation */
+  animation-duration: 2s; 
+  /* Delay before the animation starts (optional) */
+  animation-delay: 0.5s; 
+  /* Keep the final state (fully visible) */
+  animation-fill-mode: forwards; 
+  /* Initially hide the element until animation starts */
+  opacity: 0; 
+}
         "))
   ),
   
@@ -293,14 +407,14 @@ ui <- fluidPage(
         tabPanel("characteristics",
                  class = "pie-charts",
                  h3("Characteristics Analysis"),
-                 
-                 # --- Top Row (3 Charts) ---
-                 
+                 p("The charts on the top represent the total populatoin of the state. The charts on the bottom represent the death rate per 100,000 people"),
                  fluidRow(
                    column(12, highchartOutput("sharedLegend", height = "100px"))
-                 )  ,
-                 fluidRow(
-                   column(width = 12, h3("Total Population"))),
+                 ),  
+                 # --- Top Row (3 Charts) ---
+                 
+                 
+                 
                  fluidRow(
                    
                    column(width = 4, highchartOutput("aPop", height = "300px")),
@@ -308,7 +422,10 @@ ui <- fluidPage(
                    column(width = 4, highchartOutput("cPop", height = "300px"))
                  ),
                  fluidRow(
-                   column(width = 12, h3("Death Rate"))),
+                   column(width = 4,style = "text-align: center;", tags$img(src = "dotted_arrow.png",style = "height: 100px;", class = "fade-in-arrow" )),
+                   column(width = 4,style = "text-align: center;",tags$img(src = "dotted_arrow.png",style = "height: 100px;", class = "fade-in-arrow" )),
+                   column(width = 4,style = "text-align: center;", tags$img(src = "dotted_arrow.png",style = "height: 100px;" , class = "fade-in-arrow" ))
+                   ),
                  # --- Bottom Row (3 Charts) ---
                  fluidRow(
                    column(width = 4, highchartOutput("aDeath", height = "300px")),
@@ -332,6 +449,7 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   
   currentChartSelection <- reactiveVal("top5")
+  currentPieChartSelection <- reactiveVal("top3char")
   
   observeEvent(input$main_view_selector, {
     updateTabsetPanel(
@@ -356,10 +474,10 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$top3char_btn, {
-    currentChartSelection("top3char")
+    currentPieChartSelection("top3char")
   })
   observeEvent(input$bottom3char_btn, {
-    currentChartSelection("bottom3char")
+    currentPieChartSelection("bottom3char")
   })
   
   #this sections is for the navigation buttons for deaths across us
@@ -382,8 +500,8 @@ server <- function(input, output, session) {
     )
   })
   
-  output$chart_buttons <- renderUI({
-    selection <- currentChartSelection()
+  output$chart_pie_buttons <- renderUI({
+    selection <- currentPieChartSelection()
     
     base_class <- "btn-chart-select"
     active_class <- paste(base_class, "btn-chart-select-active")
@@ -391,13 +509,6 @@ server <- function(input, output, session) {
     top3char_class <- if (selection == "top3char") active_class else base_class
     bottom3char_class <- if (selection == "bottom3char") active_class else base_class
     
-    
-    div(
-      actionButton("top5_btn", "top5bottom5", class = top5_class),
-      actionButton("top5Line_btn", "top5bottom5", class = top5Line_class),
-      actionButton("bottom5_btn", "top5bottom5", class = bottom5_class),
-      actionButton("bottom5Line_btn", "top5bottom5", class = bottom5Line_class),
-    )
   })
   
   output$timeline <- renderHighchart({
@@ -502,6 +613,8 @@ server <- function(input, output, session) {
   })
   
 # Top 5 / Bottom 5 Section
+  selected_chart = "top5"
+  
   output$stateChart <- renderHighchart({
     
     selected_chart <- currentChartSelection()
@@ -852,6 +965,7 @@ server <- function(input, output, session) {
         hc_add_theme(hc_theme_flat())
       
       line_chart_bottom5
+      
     }
     else {
       # Fallback case 
@@ -895,212 +1009,59 @@ server <- function(input, output, session) {
       )
   })
 
+
+ 
+# this section calls the death rate pie function for each state
 output$aDeath <- renderHighchart({
+ 
+  selected_pie_chart <- currentPieChartSelection()
   
-  selected_chart <- currentChartSelection()
-  
-  if (selected_chart == "top3char") {
+  if (selected_pie_chart == "top3char") {
     
-    death_df_race |>
-      filter(State %in% c('WV'), Year == 2021) |>
-      hchart(type = "pie", hcaes(x = Measure, y = Value, group = State )) |>
-      hc_title(
-        text = "",
-        align = "center",
-        style = list(color = 'darkblue', fontWeight = "bold", fontSize = "18px")) |>
-      hc_tooltip(
-        pointFormat = "<b>{point.name}<b>: {point.y} deaths ({point.percentage:.1f}%)",
-        useHTML = TRUE,
-        style = list(fontSize ="13px")
-      )|>
-      hc_legend(enabled = FALSE) |> 
-      hc_add_theme(hc_theme_flat()) |>
-      hc_colors(c("#f1c40f", "#2fcc71", "#e74b3c","#9b59b6", "#34495e","#2fcc71","#3498db")) |>
-      hc_plotOptions(
-        pie = list(
-          size = 200,                # Force the pie to be exactly 200px diameter
-          center = list("50%", "50%"), # Force the pie to be exactly in the middle
-          dataLabels = list(enabled = FALSE) # Disable labels to prevent auto-resizing logic
-        )
-      ) |>
-      hc_chart(
-        marginTop = 50,     # Reserve exactly 50px for the title area
-        marginBottom = 20,  # Reserve exactly 20px for the bottom
-        spacingTop = 0,
-        spacingBottom = 0
-      )
+    death_rate_pie_chart("WV")
     
   }
-  else if (selected_chart == "bottom3char") {
+  else if (selected_pie_chart == "bottom3char") {
       
-      death_df_race |>
-        filter(State %in% c('NE'), Year == 2021) |>
-        hchart(type = "pie", hcaes(x = Measure, y = Value, group = State )) |>
-        hc_title(
-          text = "",
-          align = "center",
-          style = list(color = 'darkblue', fontWeight = "bold", fontSize = "18px")) |>
-        hc_tooltip(
-          pointFormat = "<b>{point.name}<b>: {point.y} deaths ({point.percentage:.1f}%)",
-          useHTML = TRUE,
-          style = list(fontSize ="13px")) |>
-        hc_legend(enabled = FALSE) |> 
-        hc_add_theme(hc_theme_flat()) |>
-        hc_colors(c("#f1c40f", "#2fcc71", "#e74b3c","#9b59b6", "#34495e","#2fcc71","#3498db")) |>
-        hc_plotOptions(
-          pie = list(
-            size = 200,                # Force the pie to be exactly 200px diameter
-            center = list("50%", "50%"), # Force the pie to be exactly in the middle
-            dataLabels = list(enabled = FALSE) # Disable labels to prevent auto-resizing logic
-          )
-        ) |>
-        hc_chart(
-          marginTop = 50,     # Reserve exactly 50px for the title area
-          marginBottom = 20,  # Reserve exactly 20px for the bottom
-          spacingTop = 0,
-          spacingBottom = 0
-        )
+    death_rate_pie_chart("NE")
   }
 })
 
 output$bDeath <- renderHighchart({
   
-  selected_chart <- currentChartSelection()
+  selected_pie_chart <- currentPieChartSelection()
   
-  if (selected_chart == "top3char") {
+  if (selected_pie_chart == "top3char") {
     
-    death_df_race |>
-      filter(State %in% c('DC'), Year == 2021) |>
-      hchart(type = "pie", hcaes(x = Measure, y = Value, group = State )) |>
-      hc_title(
-        text = "",
-        align = "center",
-        style = list(color = 'darkblue', fontWeight = "bold", fontSize = "18px")) |>
-      hc_tooltip(
-        pointFormat = "<b>{point.name}<b>: {point.y} deaths ({point.percentage:.1f}%)",
-        useHTML = TRUE,
-        style = list(fontSize ="13px")) |>
-        hc_legend(enabled = FALSE) |> 
-      hc_add_theme(hc_theme_flat()) |>
-      hc_colors(c("#f1c40f", "#2fcc71", "#e74b3c","#9b59b6", "#34495e","#2fcc71","#3498db")) |>
-      hc_plotOptions(
-        pie = list(
-          size = 200,                # Force the pie to be exactly 200px diameter
-          center = list("50%", "50%"), # Force the pie to be exactly in the middle
-          dataLabels = list(enabled = FALSE) # Disable labels to prevent auto-resizing logic
-        )
-      ) |>
-      hc_chart(
-        marginTop = 50,     # Reserve exactly 50px for the title area
-        marginBottom = 20,  # Reserve exactly 20px for the bottom
-        spacingTop = 0,
-        spacingBottom = 0
-      )
+    death_rate_pie_chart("DC")
       
     
   }
-  else if(selected_chart == "bottom3char")
+  else if(selected_pie_chart == "bottom3char")
   {
-    death_df_race |>
-      filter(State %in% c('SD'), Year == 2021) |>
-      hchart(type = "pie", hcaes(x = Measure, y = Value, group = State )) |>
-      hc_title(
-        text = "",
-        align = "center",
-        style = list(color = 'darkblue', fontWeight = "bold", fontSize = "18px")) |>
-      hc_tooltip(
-        pointFormat = "<b>{point.name}<b>: {point.y} deaths ({point.percentage:.1f}%)",
-        useHTML = TRUE,
-        style = list(fontSize ="13px") ) |>
-      hc_legend(enabled = FALSE) |> 
-      hc_add_theme(hc_theme_flat()) |>
-      hc_colors(c("#f1c40f", "#2fcc71", "#e74b3c","#9b59b6", "#34495e","#2fcc71","#3498db")) |>
-      hc_plotOptions(
-        pie = list(
-          size = 200,                # Force the pie to be exactly 200px diameter
-          center = list("50%", "50%"), # Force the pie to be exactly in the middle
-          dataLabels = list(enabled = FALSE) # Disable labels to prevent auto-resizing logic
-        )
-      ) |>
-      hc_chart(
-        marginTop = 50,     # Reserve exactly 50px for the title area
-        marginBottom = 20,  # Reserve exactly 20px for the bottom
-        spacingTop = 0,
-        spacingBottom = 0
-      )
+    death_rate_pie_chart("SD")
   }
 })
 output$cDeath <- renderHighchart({
   
-  selected_chart <- currentChartSelection()
+  selected_pie_chart <- currentPieChartSelection()
   
-  if (selected_chart == "top3char") {
+  if (selected_pie_chart == "top3char") {
     
-    death_df_race |>
-      filter(State %in% c('DE'), Year == 2021) |>
-      hchart(type = "pie", hcaes(x = Measure, y = Value, group = State )) |>
-      hc_title(
-        text = "",
-        align = "center",
-        style = list(color = 'darkblue', fontWeight = "bold", fontSize = "18px")) |>
-      hc_tooltip(
-        pointFormat = "<b>{point.name}<b>: {point.y} deaths ({point.percentage:.1f}%)",
-        useHTML = TRUE,
-        style = list(fontSize ="13px") ) |>
-        hc_legend(enabled = FALSE) |> 
-      hc_add_theme(hc_theme_flat()) |>
-      hc_colors(c("#f1c40f", "#2fcc71", "#e74b3c","#9b59b6", "#34495e","#2fcc71","#3498db")) |>
-      hc_plotOptions(
-        pie = list(
-          size = 200,                # Force the pie to be exactly 200px diameter
-          center = list("50%", "50%"), # Force the pie to be exactly in the middle
-          dataLabels = list(enabled = FALSE) # Disable labels to prevent auto-resizing logic
-        )
-      ) |>
-      hc_chart(
-        marginTop = 50,     # Reserve exactly 50px for the title area
-        marginBottom = 20,  # Reserve exactly 20px for the bottom
-        spacingTop = 0,
-        spacingBottom = 0
-      )
+    death_rate_pie_chart("DE")
       
     
   }
-  else if (selected_chart == "bottom3char") {
+  else if (selected_pie_chart == "bottom3char") {
   
-    death_df_race |>
-      filter(State %in% c('IA'), Year == 2021) |>
-      hchart(type = "pie", hcaes(x = Measure, y = Value, group = State )) |>
-      hc_title(
-        text = "",
-        align = "center",
-        style = list(color = 'darkblue', fontWeight = "bold", fontSize = "18px")) |>
-      hc_tooltip(
-        pointFormat = "<b>{point.name}<b>: {point.y} deaths ({point.percentage:.1f}%)",
-        useHTML = TRUE,
-        style = list(fontSize ="13px") ) |>
-      hc_legend(enabled = FALSE) |> 
-      hc_add_theme(hc_theme_flat()) |>
-      hc_colors(c("#f1c40f", "#2fcc71", "#e74b3c","#9b59b6", "#34495e","#2fcc71","#3498db")) |>
-      hc_plotOptions(
-        pie = list(
-          size = 200,                # Force the pie to be exactly 200px diameter
-          center = list("50%", "50%"), # Force the pie to be exactly in the middle
-          dataLabels = list(enabled = FALSE) # Disable labels to prevent auto-resizing logic
-        )
-      ) |>
-      hc_chart(
-        marginTop = 50,     # Reserve exactly 50px for the title area
-        marginBottom = 20,  # Reserve exactly 20px for the bottom
-        spacingTop = 0,
-        spacingBottom = 0
-      )
+    death_rate_pie_chart("NE")
     }
   
 })
 
+# this section is for the reusable legend
 output$sharedLegend <- renderHighchart({
-  selected_chart <- currentChartSelection()
+  selected_pie_chart <- currentPieChartSelection()
   
     death_df_race |>
       filter(State %in% c('NE'), Year == 2021) |>
@@ -1125,212 +1086,45 @@ output$sharedLegend <- renderHighchart({
   
 })
 
+# this section calls the population pie function for each state
 output$aPop <- renderHighchart({
   
-  selected_chart <- currentChartSelection()
+  selected_pie_chart <- currentPieChartSelection()
   
-  if (selected_chart == "top3char") {
-    
-df |>
-  filter(State %in% c('West Virginia')) |>
-  group_by(Formatted_race, State, Color) |>
-  summarise(total_population = sum(Population)) |>
-  hchart(type = "pie", hcaes(x = Formatted_race, y = total_population, group = State, color = Color )) |>
-  hc_title(
-    text = "West Virginia",
-    align = "center",
-    style = list(color = 'darkblue', fontWeight = "bold", fontSize = "18px")) |>
-  hc_tooltip(
-    pointFormat = "<b>{point.name}<b>: {point.y} Total Population ({point.percentage:.1f}%)",
-    useHTML = TRUE,
-    style = list(fontSize ="13px")) |>
-  hc_legend(enabled = FALSE) |> 
-  hc_add_theme(hc_theme_flat()) |>
-  hc_colors(c("#f1c40f", "#2fcc71", "#e74b3c","#9b59b6", "#34495e","#2fcc71","#3498db")) |>
-  hc_plotOptions(
-    pie = list(
-      size = 200,                # Force the pie to be exactly 200px diameter
-      center = list("50%", "50%"), # Force the pie to be exactly in the middle
-      dataLabels = list(enabled = FALSE) # Disable labels to prevent auto-resizing logic
-    )
-  ) |>
-  hc_chart(
-    marginTop = 50,     # Reserve exactly 50px for the title area
-    marginBottom = 20,  # Reserve exactly 20px for the bottom
-    spacingTop = 0,
-    spacingBottom = 0
-  )
+  if (selected_pie_chart == "top3char") {
+    population_pie_chart("West Virginia","West Virginia")
   }
   
-else if (selected_chart == "bottom3char") {
-  df |>
-    filter(State %in% c('Nebraska')) |>
-    group_by(Formatted_race, State, Color) |>
-    summarise(total_population = sum(Population)) |>
-    hchart(type = "pie", hcaes(x = Formatted_race, y = total_population, group = State,color = Color )) |>
-    hc_title(
-      text = "Nebraska",
-      align = "center",
-      style = list(color = 'darkblue', fontWeight = "bold", fontSize = "18px")) |>
-    hc_tooltip(
-      pointFormat = "<b>{point.name}<b>: {point.y} Total Population ({point.percentage:.1f}%)",
-      useHTML = TRUE,
-      style = list(fontSize ="13px")) |>
-    hc_legend(enabled = FALSE) |> 
-    hc_add_theme(hc_theme_flat()) |>
-    hc_colors(c("#f1c40f", "#2fcc71", "#e74b3c","#9b59b6", "#34495e","#2fcc71","#3498db")) |>
-    hc_plotOptions(
-      pie = list(
-        size = 200,                # Force the pie to be exactly 200px diameter
-        center = list("50%", "50%"), # Force the pie to be exactly in the middle
-        dataLabels = list(enabled = FALSE) # Disable labels to prevent auto-resizing logic
-      )
-    ) |>
-    hc_chart(
-      marginTop = 50,     # Reserve exactly 50px for the title area
-      marginBottom = 20,  # Reserve exactly 20px for the bottom
-      spacingTop = 0,
-      spacingBottom = 0
-    )
+else if (selected_pie_chart == "bottom3char") {
+  population_pie_chart("Nebraska","Nebraska")
 }
 })
 
 output$bPop <- renderHighchart({
   
-  selected_chart <- currentChartSelection()
+  selected_pie_chart <- currentPieChartSelection()
   
-  if (selected_chart == "top3char") {
+  if (selected_pie_chart == "top3char") {
     
-    df |>
-      filter(State %in% c('District of Columbia:')) |>
-      group_by(Formatted_race, State, Color) |>
-      summarise(total_population = sum(Population)) |>
-      hchart(type = "pie", hcaes(x = Formatted_race, y = total_population, group = State,color = Color )) |>
-      hc_title(
-        text = "Washington D.C.",
-        align = "center",
-        style = list(color = 'darkblue', fontWeight = "bold", fontSize = "18px")) |>
-      hc_tooltip(
-        pointFormat = "<b>{point.name}<b>: {point.y} Total Population ({point.percentage:.1f}%)",
-        useHTML = TRUE,
-        style = list(fontSize ="13px")) |>
-      hc_legend(enabled = FALSE) |> 
-      hc_add_theme(hc_theme_flat()) |>
-      hc_colors(c("#f1c40f", "#2fcc71", "#e74b3c","#9b59b6", "#34495e","#2fcc71","#3498db")) |>
-      hc_plotOptions(
-        pie = list(
-          size = 200,                # Force the pie to be exactly 200px diameter
-          center = list("50%", "50%"), # Force the pie to be exactly in the middle
-          dataLabels = list(enabled = FALSE) # Disable labels to prevent auto-resizing logic
-        )
-      ) |>
-      hc_chart(
-        marginTop = 50,     # Reserve exactly 50px for the title area
-        marginBottom = 20,  # Reserve exactly 20px for the bottom
-        spacingTop = 0,
-        spacingBottom = 0
-      )
+    population_pie_chart('District of Columbia:',"Washington D.C.")
+        
   }
-  else if (selected_chart == "bottom3char") {
-    df |>
-      filter(State %in% c('South Dakota')) |>
-      group_by(Formatted_race, State, Color) |>
-      summarise(total_population = sum(Population)) |>
-      hchart(type = "pie", hcaes(x = Formatted_race, y = total_population, group = State,color = Color )) |>
-      hc_title(
-        text = "South Dakota",
-        align = "center",
-        style = list(color = 'darkblue', fontWeight = "bold", fontSize = "18px")) |>
-      hc_tooltip(
-        pointFormat = "<b>{point.name}<b>: {point.y} Total Population ({point.percentage:.1f}%)",
-        useHTML = TRUE,
-        style = list(fontSize ="13px")) |>
-      hc_legend(enabled = FALSE) |> 
-      hc_add_theme(hc_theme_flat()) |>
-      hc_colors(c("#f1c40f", "#2fcc71", "#e74b3c","#9b59b6", "#34495e","#2fcc71","#3498db")) |>
-      hc_plotOptions(
-        pie = list(
-          size = 200,                # Force the pie to be exactly 200px diameter
-          center = list("50%", "50%"), # Force the pie to be exactly in the middle
-          dataLabels = list(enabled = FALSE) # Disable labels to prevent auto-resizing logic
-        )
-      ) |>
-      hc_chart(
-        marginTop = 50,     # Reserve exactly 50px for the title area
-        marginBottom = 20,  # Reserve exactly 20px for the bottom
-        spacingTop = 0,
-        spacingBottom = 0
-      )
+  else if (selected_pie_chart == "bottom3char") {
+    population_pie_chart("South Dakota","South Dakota")
   }
 })
 
 output$cPop <- renderHighchart({
   
-  selected_chart <- currentChartSelection()
+  selected_pie_chart <- currentPieChartSelection()
   
-  if (selected_chart == "top3char") {
+  if (selected_pie_chart == "top3char") {
     
-    df |>
-      filter(State %in% c('Delaware')) |>
-      group_by(Formatted_race, State, Color) |>
-      summarise(total_population = sum(Population)) |>
-      hchart(type = "pie", hcaes(x = Formatted_race, y = total_population, group = State,color = Color )) |>
-      hc_title(
-        text = "Delaware",
-        align = "center",
-        style = list(color = 'darkblue', fontWeight = "bold", fontSize = "18px")) |>
-      hc_tooltip(
-        pointFormat = "<b>{point.name}<b>: {point.y} Total Population ({point.percentage:.1f}%)",
-        useHTML = TRUE,
-        style = list(fontSize ="13px")) |>
-      hc_legend(enabled = FALSE) |> 
-      hc_add_theme(hc_theme_flat()) |>
-      hc_colors(c("#f1c40f", "#2fcc71", "#e74b3c","#9b59b6", "#34495e","#2fcc71","#3498db")) |>
-      hc_plotOptions(
-        pie = list(
-          size = 200,                # Force the pie to be exactly 200px diameter
-          center = list("50%", "50%"), # Force the pie to be exactly in the middle
-          dataLabels = list(enabled = FALSE) # Disable labels to prevent auto-resizing logic
-        )
-      ) |>
-      hc_chart(
-        marginTop = 50,     # Reserve exactly 50px for the title area
-        marginBottom = 20,  # Reserve exactly 20px for the bottom
-        spacingTop = 0,
-        spacingBottom = 0
-      )
+    population_pie_chart("Delaware","Delaware")
   }
-  else if (selected_chart == "bottom3char") {
+  else if (selected_pie_chart == "bottom3char") {
     
-    df |>
-      filter(State %in% c('Iowa')) |>
-      group_by(Formatted_race, State, Color) |>
-      summarise(total_population = sum(Population)) |>
-      hchart(type = "pie", hcaes(x = Formatted_race, y = total_population, group = State,color = Color )) |>
-      hc_title(
-        text = "Iowa",
-        align = "center",
-        style = list(color = 'darkblue', fontWeight = "bold", fontSize = "18px")) |>
-      hc_tooltip(
-        pointFormat = "<b>{point.name}<b>: {point.y} Total Population ({point.percentage:.1f}%)",
-        useHTML = TRUE,
-        style = list(fontSize ="13px")) |>
-      hc_legend(enabled = FALSE) |> 
-      hc_add_theme(hc_theme_flat()) |>
-      hc_colors(c("#f1c40f", "#2fcc71", "#e74b3c","#9b59b6", "#34495e","#2fcc71","#3498db")) |>
-      hc_plotOptions(
-        pie = list(
-          size = 200,                # Force the pie to be exactly 200px diameter
-          center = list("50%", "50%"), # Force the pie to be exactly in the middle
-          dataLabels = list(enabled = FALSE) # Disable labels to prevent auto-resizing logic
-        )
-      ) |>
-      hc_chart(
-        marginTop = 50,     # Reserve exactly 50px for the title area
-        marginBottom = 20,  # Reserve exactly 20px for the bottom
-        spacingTop = 0,
-        spacingBottom = 0
-      )
+    population_pie_chart("Iowa","Iowa")
   }
 })
 
