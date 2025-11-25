@@ -310,7 +310,7 @@ ui <- fluidPage(
           conditionalPanel(
             # Condition checks the selected value of the main navigation input
             condition = "input.main_view_selector == 'deaths'",
-            h4("Deaths Filters"),
+            h4("Categories"),
             actionButton("top5_btn", 
                          "Top 5 States by Average Death Rate", 
                          class = "btn-chart-select"),
@@ -327,7 +327,7 @@ ui <- fluidPage(
         
           conditionalPanel(
             condition = "input.main_view_selector == 'characteristics'",
-            h4("Characteristics Filters"),
+            h4("Ranked States"),
             actionButton("top3char_btn", 
                          "Top 3 States by Race", 
                          class = "btn-chart-select"),
@@ -349,7 +349,7 @@ ui <- fluidPage(
         id = "main_content_tabs",
         type = "hidden", 
         tabPanel("intro",
-                 h3("DA-6233 - Evening Class - Group 1"),
+                 h3("DA-6233-902-Fall 2025-Data Analytics - Group 1"),
                  
                  div(class = "member-info",
                      tags$img(
@@ -358,8 +358,8 @@ ui <- fluidPage(
                        alt = "Valerie Ceciliano"
                      ),
                      p("Valerie Ceciliano")
+                     
                  ),
-                 
                  div(class = "member-info",
                      tags$img(
                        src = "Picture1.png",
@@ -407,7 +407,7 @@ ui <- fluidPage(
         tabPanel("characteristics",
                  class = "pie-charts",
                  h3("Characteristics Analysis"),
-                 p("The charts on the top represent the total populatoin of the state. The charts on the bottom represent the death rate per 100,000 people"),
+                 p("The charts on the top represent the total populatoin of the state for 2021. The charts on the bottom represent the death rate per 100,000 people for 2021"),
                  fluidRow(
                    column(12, highchartOutput("sharedLegend", height = "100px"))
                  ),  
@@ -422,9 +422,9 @@ ui <- fluidPage(
                    column(width = 4, highchartOutput("cPop", height = "300px"))
                  ),
                  fluidRow(
-                   column(width = 4,style = "text-align: center;", tags$img(src = "dotted_arrow.png",style = "height: 100px;", class = "fade-in-arrow" )),
-                   column(width = 4,style = "text-align: center;",tags$img(src = "dotted_arrow.png",style = "height: 100px;", class = "fade-in-arrow" )),
-                   column(width = 4,style = "text-align: center;", tags$img(src = "dotted_arrow.png",style = "height: 100px;" , class = "fade-in-arrow" ))
+                   column(width = 4,style = "text-align: center;", tags$img(src = "dotted_arrow.png",style = "height: 75px;", class = "fade-in-arrow" )),
+                   column(width = 4,style = "text-align: center;",tags$img(src = "dotted_arrow.png",style = "height: 75px;", class = "fade-in-arrow" )),
+                   column(width = 4,style = "text-align: center;", tags$img(src = "dotted_arrow.png",style = "height: 75px;" , class = "fade-in-arrow" ))
                    ),
                  # --- Bottom Row (3 Charts) ---
                  fluidRow(
@@ -434,6 +434,7 @@ ui <- fluidPage(
                  ),
                  fluidRow(
                    column(width = 6, p("Source:"))
+                   
                    
                  ),
                  fluidRow(
