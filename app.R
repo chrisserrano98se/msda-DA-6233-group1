@@ -90,7 +90,7 @@ death_rate_pie_chart <- function(input_state) {
       align = "center",
       style = list(color = 'darkblue', fontWeight = "bold", fontSize = "18px")) |>
     hc_tooltip(
-      pointFormat = "<b>{point.name}<b>: {point.y} deaths ({point.percentage:.1f}%)",
+      pointFormat = "{point.y} deaths per 100,000 <br/> ({point.percentage:.1f}%)",
       useHTML = TRUE,
       style = list(fontSize ="13px") ) |>
     hc_legend(enabled = FALSE) |> 
@@ -137,7 +137,7 @@ population_pie_chart <- function(input_state, display_state)
       align = "center",
       style = list(color = '#7f7f7f', fontWeight = "bold", fontSize = "18px")) |>
     hc_tooltip(
-      pointFormat = "<b>{point.name}<b>: {point.y} Total Population ({point.percentage:.1f}%)",
+      pointFormat = "Total Population: {point.y} <br/>({point.percentage:.1f}%)",
       useHTML = TRUE,
       style = list(fontSize ="13px")) |>
     hc_legend(enabled = FALSE) |> 
@@ -525,15 +525,12 @@ server <- function(input, output, session) {
     #JS Functions for Timeline
     
     format_bce_labels <- JS("function() {
-    var year = Highcharts.dateFormat('%Y', this.value) * 1;
-    if (year < 1) {
-        var absoluteYear = Math.abs(this.value / 31536000000); 
-        if (absoluteYear > 5000) {
-            return Highcharts.dateFormat('%Y', this.value);
-        }
-        return absoluteYear.toFixed(0) + ' BCE';
+    var year = this.value;
+    if (year < 0) {
+        
+        return year + ' BCE';
     }
-    return Highcharts.dateFormat('%Y', this.value);
+    return year
 }")
     
     js_dim_other_labels <- JS("function() {
@@ -559,15 +556,17 @@ server <- function(input, output, session) {
   });
 }")
     
+  
     timeline_df |>
-      hchart("timeline", hcaes(x = Date, name = Event)) |>
+      mutate(Year = Date) |>
+      hchart("timeline", hcaes(x = Year, name = Event)) |>
       hc_add_theme(hc_theme_flat()) |>
       hc_yAxis(
         visible = FALSE) |>
       hc_xAxis(
         type = "datetime", 
-        dateTimeLabelFormats = list(
-          format_bce_labels
+        labels = list(
+          formatter = format_bce_labels
         )
       ) |>
       hc_title(text = "<b>The History of Opium</b>") |>
