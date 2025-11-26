@@ -528,7 +528,7 @@ server <- function(input, output, session) {
     var year = this.value;
     if (year < 0) {
         
-        return year + ' BCE';
+        return (year * -1) + ' BCE';
     }
     return year
 }")
