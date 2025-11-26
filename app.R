@@ -256,6 +256,13 @@ ui <- fluidPage(
   /* Initially hide the element until animation starts */
   opacity: 0; 
 }
+
+.tight-p-container p {
+            margin-top: 1px;     
+            margin-bottom: 1px;
+            text-align: center;
+
+        }
         "))
   ),
   
@@ -268,9 +275,10 @@ ui <- fluidPage(
     p("Analyzing death statistics and trends across the country."),
     img(
       src = "https://www.utsa.edu/_files/images/logos/ut-san-antonio.svg",
-      style = "position: absolute; top: 9px; right: 0; width: 300px;" 
+      style = "position: absolute; top: 9px; right: 30px; width: 300px;" 
     )
   ),
+  hr(),
   
   # --- Main Sidebar Layout ---
   sidebarLayout(
@@ -284,7 +292,7 @@ ui <- fluidPage(
                         "2. History" = "history",
                         "3. US Map" = "us_map", 
                         "4. Deaths Across the Country" = "deaths",
-                        "5. Characteristics" = "characteristics",
+                        "5. Demographics" = "characteristics",
                         "6. Policies" = "policies"
                       ),
                       selected = "intro"
@@ -371,11 +379,11 @@ ui <- fluidPage(
                  
                  div(class = "member-info",
                      tags$img(
-                       src = "https://placehold.co/50x50/4B8BBE/FFFFFF/png?text=MH",
+                       src = "IMG_20231116_125244021.jpg",
                        class = "member-img",
                        alt = "Mark Hertzfeld II"
                      ),
-                     p("Mark Hertzfeld II - The Return of Mark Hertzfeld")
+                     p("Mark Hertzfeld II")
                  ),
                  
                  div(class = "member-info",
@@ -388,33 +396,28 @@ ui <- fluidPage(
                  )
         ),
         tabPanel("history",
-                 h3("History and Timeline"),
                  highchartOutput("timeline", height = "600px")
         ),
         
         tabPanel("us_map",
-                 h3("US map"),
                  plotOutput("usMap", height = "600px")
                  
         ),
         
         tabPanel("deaths",
-                 h3("Deaths Across the Country"),
                  highchartOutput("stateChart", height = "600px")
                  
         ),
         
         tabPanel("characteristics",
                  class = "pie-charts",
-                 h3("Characteristics Analysis"),
-                 p("The charts on the top represent the total populatoin of the state for 2021. The charts on the bottom represent the death rate per 100,000 people for 2021"),
                  fluidRow(
                    column(12, highchartOutput("sharedLegend", height = "100px"))
                  ),  
                  # --- Top Row (3 Charts) ---
                  
                  
-                 
+                 hr(),
                  fluidRow(
                    
                    column(width = 4, highchartOutput("aPop", height = "300px")),
@@ -433,21 +436,13 @@ ui <- fluidPage(
                    column(width = 4, highchartOutput("cDeath", height = "300px"))
                  ),
                  fluidRow(
-                   column(width = 6, p("Source:"))
-                   
-                   
-                 ),
-                 fluidRow(
-                   column(width = 6, p("U.S. Census Bureau population estimates for July 1, 2021"))
-                   
-                 ),
-                 fluidRow(
-                   
-                   column(width = 6, p("Americas Health Rankings - 2023 Annual Report"))
-                   
+                   width = 12,
+                   tags$div(class = "tight-p-container",
+                            p("Sources"),
+                            p("U.S. Census Bureau population estimates for July 1, 2021"),
+                            p("Americas Health Rankings - 2023 Annual Report")
+                   )
                  )
-                 
-        
         ),
         
         tabPanel("policies",
@@ -575,7 +570,7 @@ server <- function(input, output, session) {
           format_bce_labels
         )
       ) |>
-      hc_title(text = "<b></b>") |>
+      hc_title(text = "<b>The History of Opium</b>") |>
       hc_chart(
         zoomType = 'x'
       )  |>
@@ -1096,7 +1091,10 @@ output$sharedLegend <- renderHighchart({
                 verticalAlign = "top",  # Moves it to the top of the container
                 align = "center",       # Centers it horizontally
                 layout = "horizontal") |> # Ensure legend global switch is on
-      hc_chart(height = 160) 
+      hc_chart(height = 160) |>
+      hc_title(text = "Racial Demographics by State",
+               align = "center")|>
+      hc_subtitle(text = "The charts on the top represent the total populatoin of the state for 2021. The charts on the bottom represent the death rate per 100,000 people for 2021")
   
 })
 
