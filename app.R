@@ -1155,7 +1155,7 @@ output$sharedLegend <- renderHighchart({
 # this section calls the population pie function for each state
 output$aPop <- renderHighchart({
   
-  selected_time_chart <- currentPieChartSelection()
+  selected_pie_chart <- currentPieChartSelection()
   
   if (selected_pie_chart == "top3char") {
     population_pie_chart("West Virginia","West Virginia")
