@@ -368,7 +368,7 @@ ui <- fluidPage(
           
           conditionalPanel(
             condition = "input.main_view_selector == 'policies'",
-            h4("Factor"),
+            h4("Factors"),
             actionButton("waves_btn", 
                          "Opioid Waves", 
                          class = "btn-chart-select"),
@@ -1155,7 +1155,7 @@ output$sharedLegend <- renderHighchart({
 # this section calls the population pie function for each state
 output$aPop <- renderHighchart({
   
-  selected_pie_chart <- currentPieChartSelection()
+  selected_time_chart <- currentPieChartSelection()
   
   if (selected_pie_chart == "top3char") {
     population_pie_chart("West Virginia","West Virginia")
@@ -1195,8 +1195,9 @@ output$cPop <- renderHighchart({
 })
 
 output$timeChart <- renderHighchart({
-  selected_pie_chart <- currentTimeChartSelection()
-  if (selected_pie_chart == "waves") {
+  selected_time_chart <- currentTimeChartSelection()
+  
+  if (selected_time_chart == "waves") {
     Opioid_Total_deaths |>
       hchart(type = "column", hcaes(x = TimeFrame, y = Data))|>
       hc_chart(height = 600) |>
@@ -1242,7 +1243,7 @@ output$timeChart <- renderHighchart({
       )
   }
   
-else if (selected_pie_chart == "time") {
+else if (selected_time_chart == "time") {
   DTOO |>
     hchart(type = "line", hcaes(x = Year, y = `Overdose Deaths`, group = `Drug Type`)) |>
     hc_chart(height = 600) |>
@@ -1268,7 +1269,7 @@ else if (selected_pie_chart == "time") {
       ))
 }
   
-  else if (selected_pie_chart == "prescriptions")
+  else if (selected_time_chart == "prescriptions")
   {
     OPO |>
       hchart(type = "line", hcaes(x = Year, y = `Opioids Dispensed in Billions`)) |>
