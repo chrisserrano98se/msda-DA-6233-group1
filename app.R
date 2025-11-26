@@ -10,6 +10,15 @@ library(urbnmapr)
 #Timeline dataset
 timeline_df <- read.csv("opium_timeline.csv") 
 
+Drug_Type_Overdose_Overtime <- read_csv(file.path
+                                        ("CBO_Drug_Overdose_Deaths_by_Drug_Type.csv"))
+
+Opioids_Prescribed_Overtime <- read_csv(file.path
+                                        ("CBO_Opioids_Prescribed_Over_Time.csv"))
+
+opioid_deaths_total <- read_csv(file.path
+                                ("Opiod_Data_Combined.csv"))
+
 death_df_race = read_csv("opioid_death_demographics_NVP.csv") |>
   filter(Measure %in% 
            c('Drug Deaths - American Indian/Alaska Native',
@@ -24,7 +33,20 @@ death_df_race = read_csv("opioid_death_demographics_NVP.csv") |>
 df = read_csv("census_by_race_3.csv") |>
   mutate(Formatted_race = as.factor(Formatted_race))
 
+Opioid_Total_deaths <- opioid_deaths_total |>
+  filter(`Drug Type` == "All opioids") |>
+  filter(`Location` == "United States") |>
+  mutate(Data = as.numeric(Data)) |>
+  mutate(across(where(is.character), as.factor)) |>
+  mutate(Data = round(Data * 100000),0)
 
+DTOO <- Drug_Type_Overdose_Overtime |>
+  mutate(`Drug Type` = as.factor(`Drug Type`)) |>
+  mutate(`Overdose Deaths` = `Overdose Deaths` * 1000) |>
+  filter(`Drug Type` != "Any Opioid")
+
+OPO <- Opioids_Prescribed_Overtime |>
+  filter(Year >= 2000)
 
 #This is used for the Map
 my_data = read.csv("Opiod_data.csv")
@@ -293,7 +315,7 @@ ui <- fluidPage(
                         "3. US Map" = "us_map", 
                         "4. Deaths Across the Country" = "deaths",
                         "5. Demographics" = "characteristics",
-                        "6. Policies" = "policies"
+                        "6. Contributing Factors" = "policies"
                       ),
                       selected = "intro"
           ),
@@ -346,7 +368,16 @@ ui <- fluidPage(
           
           conditionalPanel(
             condition = "input.main_view_selector == 'policies'",
-            h4("Policy Filters")
+            h4("Factor"),
+            actionButton("waves_btn", 
+                         "Opioid Waves", 
+                         class = "btn-chart-select"),
+            actionButton("time_btn", 
+                         "Deaths by Type over Time", 
+                         class = "btn-chart-select"),
+            actionButton("prescriptions_btn", 
+                         "Prescritpion Rates", 
+                         class = "btn-chart-select")
           )
       )
     ),
@@ -446,8 +477,7 @@ ui <- fluidPage(
         ),
         
         tabPanel("policies",
-                 h3("Policies and Interventions"),
-                 highchartOutput("deathmap", height = "400px")
+                 highchartOutput("timeChart", height = "600px")
         )
       )
     )
@@ -459,6 +489,7 @@ server <- function(input, output, session) {
   
   currentChartSelection <- reactiveVal("top5")
   currentPieChartSelection <- reactiveVal("top3char")
+  currentTimeChartSelection <- reactiveVal("waves")
   
   observeEvent(input$main_view_selector, {
     updateTabsetPanel(
@@ -472,6 +503,7 @@ server <- function(input, output, session) {
   observeEvent(input$top5_btn, {
     currentChartSelection("top5")
   })
+  
   observeEvent(input$top5Line_btn, {
     currentChartSelection("top5Line")
   })
@@ -487,6 +519,17 @@ server <- function(input, output, session) {
   })
   observeEvent(input$bottom3char_btn, {
     currentPieChartSelection("bottom3char")
+  })
+  
+  observeEvent(input$waves_btn, {
+    currentTimeChartSelection("waves")
+  })
+  observeEvent(input$time_btn, {
+    currentTimeChartSelection("time")
+  })
+  
+  observeEvent(input$prescriptions_btn, {
+    currentTimeChartSelection("prescriptions")
   })
   
   #this sections is for the navigation buttons for deaths across us
@@ -517,6 +560,18 @@ server <- function(input, output, session) {
     
     top3char_class <- if (selection == "top3char") active_class else base_class
     bottom3char_class <- if (selection == "bottom3char") active_class else base_class
+    
+  })
+  
+  output$chart_pie_buttons <- renderUI({
+    selection <- currentTimeChartSelection()
+    
+    base_class <- "btn-chart-select"
+    active_class <- paste(base_class, "btn-chart-select-active")
+    
+    waves_class <- if (selection == "waves") active_class else base_class
+    time_class <- if (selection == "time") active_class else base_class
+    prescriptions_class <- if (selection == "prescriptions") active_class else base_class
     
   })
   
@@ -1139,8 +1194,121 @@ output$cPop <- renderHighchart({
   }
 })
 
+output$timeChart <- renderHighchart({
+  selected_pie_chart <- currentTimeChartSelection()
+  if (selected_pie_chart == "waves") {
+    Opioid_Total_deaths |>
+      hchart(type = "column", hcaes(x = TimeFrame, y = Data))|>
+      hc_chart(height = 600) |>
+      hc_add_theme(hc_theme_flat()) |>
+      hc_yAxis(title = list(text = "Overdose Daeths"),
+               gridLineWidth = 1,
+               gridLineDashStyle = "Dash",
+               labels = list(
+                 formatter = JS("function () { return Highcharts.numberFormat",
+                                "(this.value, 0, '.', ','); }")))|>
+      hc_xAxis(title = list(text = "Year"),
+               gridLineWidth = 1,
+               gridLineDashStyle = "Dash",
+               plotLines = list(
+                 list(
+                   color = "red", dashStyle = "Dash", width = 2, value = 1999, zIndex = 5,
+                   label = list(text = "Wave 1", align = "center", 
+                                rotation = 0, verticalAlign = "above", y = -5)
+                 ),
+                 list(
+                   color = "red", dashStyle = "Dash", width = 2, value = 2010, zIndex = 5,
+                   label = list(text = "Wave 2", align = "center", 
+                                rotation = 0, verticalAlign = "top", y = -5)
+                 ),
+                 list(
+                   color = "red", dashStyle = "Dash", width = 2, value = 2013, zIndex = 5,
+                   label = list(text = "Wave 3", align = "center",
+                                rotation = 0, verticalAlign = "top", y = -5)
+                 ),
+                 list(
+                   color = "red", dashStyle = "Dash", width = 2, value = 2019, zIndex = 5,
+                   label = list(text = "Wave 4", align = "center", 
+                                rotation = 0, verticalAlign = "top", y = -5)
+                 ))) |>
+      hc_title(text = "Opiod Overdose Deaths Across US 1999-2023") |>
+      hc_colors(c("#FFB300")) |>
+      hc_tooltip(
+        pointFormatter = JS(
+          "function() { 
+       return 'Deaths: <b>' + Highcharts.numberFormat(this.y, 0, '.', ',') + '</b>'; 
+     }"
+        )
+      )
+  }
+  
+else if (selected_pie_chart == "time") {
+  DTOO |>
+    hchart(type = "line", hcaes(x = Year, y = `Overdose Deaths`, group = `Drug Type`)) |>
+    hc_chart(height = 600) |>
+    hc_yAxis(title = list(text = "Overdose Daeths"),
+             gridLineWidth = 1,
+             gridLineDashStyle = "Dash",
+             labels = list(
+               formatter = JS("function () { return Highcharts.numberFormat",
+                              "(this.value, 0, '.', ','); }")))|>
+    hc_xAxis(title = list(text = "Year"),
+             gridLineWidth = 1,
+             gridLineDashStyle = "Dash") |>
+    hc_add_theme(hc_theme_flat()) |>
+    hc_title(text = "<b>Drug Overdoses in US between 2000 and 2020 by Drug Type<b>") |>
+    hc_subtitle(text = "This data is sourced from https://www.cbo.gov/publication/58532") |>
+    hc_colors(c("#f1c40f", "#e67e22", "#3498db","#9b59b6", "#34495e","#2fcc71","#e74b3c")) |>
+    hc_legend(enabled = TRUE, layout = "horizontal", align = "center", verticalAlign = "bottom") |>
+    hc_tooltip(
+      pointFormatter = JS(
+        "function() { 
+       return 'Deaths: <b>' + Highcharts.numberFormat(this.y, 0, '.', ',') + '</b>'; 
+     }"
+      ))
 }
-
+  
+  else if (selected_pie_chart == "prescriptions")
+  {
+    OPO |>
+      hchart(type = "line", hcaes(x = Year, y = `Opioids Dispensed in Billions`)) |>
+      hc_chart(height = 600) |>
+      hc_yAxis(title = list(text = "Prescription Opiods Prescribed (Billions)"),
+               gridLineWidth = 1,
+               gridLineDashStyle = "Dash",
+               labels = list(
+                 formatter = JS("function () { return Highcharts.numberFormat",
+                                "(this.value, 0, '.', ','); }")))|>
+      hc_xAxis(title = list(text = "Year"),
+               gridLineWidth = 1,
+               gridLineDashStyle = "Dash",
+               plotLines = list(
+                 list(
+                   color = "#e74b3c", dashStyle = "Dash", width = 2, value = 2016, zIndex = 5,
+                   label = list(text = "CARA & 21st Century Cures Act", align = "center", 
+                                rotation = 0, verticalAlign = "above", y = -5)),
+                 list(
+                   color = "#e74b3c", dashStyle = "Dash", width = 2, value = 2018, zIndex = 5,
+                   label = list(text = "SUPPORT Act", align = "center", 
+                                rotation = 0, verticalAlign = "above", y = 10)),
+                 list(
+                   color = "#e74b3c", dashStyle = "Dash", width = 2, value = 2011, zIndex = 5,
+                   label = list(text = "FDA Opioid REMS (Risk Evaluation and Mitigation Strategy)                                  Requirements", align = "center",rotation = 0,
+                                verticalAlign = "above", y = 25)))
+      ) |>
+      hc_add_theme(hc_theme_flat()) |>
+      hc_title(text = "<b>Total Amount of opioids prescribed in US across 1992 to 2020<b>") |>
+      hc_subtitle(useHTML = TRUE,text = "This data is sourced from https://www.cbo.gov/publication/58532<br/><br/>") |>
+      hc_colors(c("#e74b3c")) |>
+      hc_tooltip(
+        pointFormatter = JS(
+          "function() { 
+       return 'Opiods Prescribed: <b>' + Highcharts.numberFormat(this.y, 0, '.', ',') + '</b>'; 
+     }"
+        ))
+  }
+})
+}
 # Run the application
 shinyApp(ui = ui, server = server)
 
