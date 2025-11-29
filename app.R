@@ -43,6 +43,20 @@ Opioid_Total_deaths <- opioid_deaths_total |>
   mutate(across(where(is.character), as.factor)) |>
   mutate(Data = round(Data * 100000),0)
 
+CDC_TDD <- CDC_Drug_Type_Overdose_Overtime |>
+  group_by(Year) |>
+  mutate(across(where(is.character), as.factor)) |>
+  mutate(`Drug Type` = recode(`Drug Type`,
+                              "Other opioids" = "Prescription Opioids",
+                              "Other synthetic narcotics" = "Synthetic Opioids",
+                              "Other and unspecified narcotics" = "Multi-mixed opioids",
+                              "Psychostimulants with abuse potential" = "Psychostimulants")) |>
+  filter(`Drug Type` != "Psychostimulants")
+
+CDC_TDD_TLLL <- CDC_TDD |>
+  group_by(Year) |>
+  mutate(Total_Deaths = sum(Deaths, na.rm = TRUE))
+
 DTOO <- Drug_Type_Overdose_Overtime |>
   mutate(`Drug Type` = as.factor(`Drug Type`)) |>
   mutate(`Overdose Deaths` = `Overdose Deaths` * 1000) |>
@@ -1211,19 +1225,7 @@ output$timeChart <- renderHighchart({
   selected_time_chart <- currentTimeChartSelection()
   
   if (selected_time_chart == "waves") {
-    CDC_TDD <- CDC_Drug_Type_Overdose_Overtime |>
-      group_by(Year) |>
-      mutate(across(where(is.character), as.factor)) |>
-      mutate(`Drug Type` = recode(`Drug Type`,
-                                  "Other opioids" = "Prescription Opioids",
-                                  "Other synthetic narcotics" = "Synthetic Opioids",
-                                  "Other and unspecified narcotics" = "Multi-mixed opioids",
-                                  "Psychostimulants with abuse potential" = "Psychostimulants")) |>
-      filter(`Drug Type` != "Psychostimulants")
     
-    CDC_TDD_TLLL <- CDC_TDD |>
-      group_by(Year) |>
-      mutate(Total_Deaths = sum(Deaths, na.rm = TRUE))
     
     CDC_TDD_TLLL |>
       hchart(type = "column", hcaes(x = Year, y = Total_Deaths))|>
