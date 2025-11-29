@@ -5,40 +5,48 @@ format: html
 editor: visual
 ---
 
-Sources used: https://www.cbo.gov/publication/58532
+Sources used :
 
-I used a report I found from the Congressional Budget Office which used the following sources: - Data source: Congressional Budget Office, using information from the CDC WONDER database, Centers for Disease Control and Prevention, National Center for Health Statistics, “About Multiple Cause of Death 1999–2020” (accessed January 5, 2022), https://wonder.cdc.gov/mcd-icd10.html. See www.cbo.gov/publication/58221#data.
+Inspiration: https://www.cbo.gov/publication/58532
 
--   Data source: IQVIA Institute for Human Data Science, Prescription Opioid Trends in the United States: Measuring and Understanding Progress in the Opioid Crisis (December 2020), https://tinyurl.com/5a9dk8en. See www.cbo.gov/publication/58221#data.
+Data source: CDC WONDER database, Centers for Disease Control and Prevention, National Center for Health Statistics, “About Multiple Cause of Death 1999–2020” https://wonder.cdc.gov/mcd-icd10.html.
+
+The only correction I made for usability to the .csv file generated was to Change one column name to Drug Type instead of what was originally generated.
+
+The data source required me to specify my criteria, which I did which resulted in a more polished data source.
 
 ```{r}
 library(tidyverse)
 library(highcharter)
 library(dplyr)
+
                        
-Drug_Type_Overdose_Overtime <- read_csv(file.path
-                            ("CBO_Drug_Overdose_Deaths_by_Drug_Type.csv"))
-
-Opioids_Prescribed_Overtime <- read_csv(file.path
-                            ("CBO_Opioids_Prescribed_Over_Time.csv"))
-
-opioid_deaths_total <- read_csv(file.path
-                            ("Opiod_Data_Combined.csv"))
+CDC_Drug_Type_Overdose_Overtime <- read_csv(file.path
+                            ("CDC, Multiple Cause of Death by Drug Type 1999-2020.csv"))
                        
 ```
 
 ```{r}
-Opioid_Total_deaths <- opioid_deaths_total |>
-  filter(`Drug Type` == "All opioids") |>
-  filter(`Location` == "United States") |>
-  mutate(Data = as.numeric(Data)) |>
+CDC_TDD <- CDC_Drug_Type_Overdose_Overtime |>
+  group_by(Year) |>
   mutate(across(where(is.character), as.factor)) |>
-  mutate(Data = round(Data * 100000),0)
+  mutate(`Drug Type` = recode(`Drug Type`,
+    "Other opioids" = "Prescription Opioids",
+    "Other synthetic narcotics" = "Synthetic Opioids",
+    "Other and unspecified narcotics" = "Multi-mixed opioids",
+    "Psychostimulants with abuse potential" = "Psychostimulants")) |>
+  filter(`Drug Type` != "Psychostimulants")
+```
+
+```{R}
+CDC_TDD_TLLL <- CDC_TDD |>
+  group_by(Year) |>
+  mutate(Total_Deaths = sum(Deaths, na.rm = TRUE))
 ```
 
 ```{r}
-Opioid_Total_deaths |>
-  hchart(type = "column", hcaes(x = TimeFrame, y = Data))|>
+CDC_TDD_TLLL |>
+  hchart(type = "column", hcaes(x = Year, y = Total_Deaths))|>
     hc_chart(backgroundColor = "#e8f4f8") |>
     hc_yAxis(title = list(text = "Overdose Daeths"),
              gridLineWidth = 1,
@@ -71,6 +79,7 @@ Opioid_Total_deaths |>
                      rotation = 0, verticalAlign = "top", y = -5)
       ))) |>
     hc_title(text = "Opiod Overdose Deaths Across US 1999-2023") |>
+    hc_subtitle(text = "Sourced from https://wonder.cdc.gov/mcd-icd10.html") |>
     hc_colors(c("#FFB300")) |>
     hc_tooltip(
       pointFormatter = JS(
@@ -82,15 +91,8 @@ Opioid_Total_deaths |>
 ```
 
 ```{r}
-DTOO <- Drug_Type_Overdose_Overtime |>
-  mutate(`Drug Type` = as.factor(`Drug Type`)) |>
-  mutate(`Overdose Deaths` = `Overdose Deaths` * 1000) |>
-  filter(`Drug Type` != "Any Opioid")
-```
-
-```{r}
-DTOO |>
-  hchart(type = "line", hcaes(x = Year, y = `Overdose Deaths`, group = `Drug Type`)) |>
+CDC_TDD |>
+  hchart(type = "line", hcaes(x = Year, y = Deaths, group = `Drug Type`)) |>
     hc_chart(backgroundColor = "#e8f4f8") |>
     hc_yAxis(title = list(text = "Overdose Daeths"),
              gridLineWidth = 1,
@@ -102,8 +104,7 @@ DTOO |>
              gridLineWidth = 1,
              gridLineDashStyle = "Dash") |>
     hc_title(text = "<b>Drug Overdoses in US between 2000 and 2020 by Drug Type<b>") |>
-    hc_subtitle(text = "This data is sourced from https://www.cbo.gov/publication/58532") |>
-    hc_colors(c("#7CAE00", "#00BFC4", "#C77CFF", "#FFB300")) |>
+    hc_colors(c("#F8766D", "#7CAE00", "#00BFC4", "#C77CFF", "#FFB300")) |>
     hc_legend(enabled = TRUE, layout = "horizontal", align = "center", verticalAlign = "bottom") |>
     hc_tooltip(
       pointFormatter = JS(
@@ -114,15 +115,15 @@ DTOO |>
 ```
 
 ```{r}
-OPO <- Opioids_Prescribed_Overtime |>
-  filter(Year >= 2000)
+CDC_TDD_2 <- CDC_TDD |>
+  filter(`Drug Type` == "Prescription Opioids")
 ```
 
 ```{r}
-OPO |>
-  hchart(type = "line", hcaes(x = Year, y = `Opioids Dispensed in Billions`)) |>
+CDC_TDD_2 |>
+  hchart(type = "column", hcaes(x = Year, y = Deaths)) |>
     hc_chart(backgroundColor = "#e8f4f8") |>
-    hc_yAxis(title = list(text = "Prescription Opiods Prescribed (Billions)"),
+    hc_yAxis(title = list(text = "Deaths"),
              gridLineWidth = 1,
              gridLineDashStyle = "Dash",
              labels = list(
@@ -145,13 +146,12 @@ OPO |>
         label = list(text = "FDA Opioid REMS (Risk Evaluation and Mitigation Strategy)                                  Requirements", align = "center",rotation = 0,
                      verticalAlign = "above", y = 25)))
         ) |>
-    hc_title(text = "<b>Total Amount of opioids prescribed in US across 1992 to 2020<b>") |>
-    hc_subtitle(text = "This data is sourced from https://www.cbo.gov/publication/58532") |>
+    hc_title(text = "<b>Amount of Prescription Opioid Deaths in US across 1992 to 2020 impacted by policies<b>") |>
     hc_colors(c("#F8766D")) |>
     hc_tooltip(
       pointFormatter = JS(
     "function() { 
-       return 'Opiods Prescribed: <b>' + Highcharts.numberFormat(this.y, 0, '.', ',') + '</b>'; 
+       return 'Deaths: <b>' + Highcharts.numberFormat(this.y, 0, '.', ',') + '</b>'; 
      }"
   ))
 ```

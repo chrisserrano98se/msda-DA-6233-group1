@@ -13,6 +13,9 @@ timeline_df <- read.csv("opium_timeline.csv")
 Drug_Type_Overdose_Overtime <- read_csv(file.path
                                         ("CBO_Drug_Overdose_Deaths_by_Drug_Type.csv"))
 
+CDC_Drug_Type_Overdose_Overtime <- read_csv(file.path
+                                            ("CDC, Multiple Cause of Death by Drug Type 1999-2020.csv"))
+
 Opioids_Prescribed_Overtime <- read_csv(file.path
                                         ("CBO_Opioids_Prescribed_Over_Time.csv"))
 
@@ -283,6 +286,7 @@ ui <- fluidPage(
             margin-top: 1px;     
             margin-bottom: 1px;
             text-align: center;
+            background-color: #ecf0f1;
 
         }
         "))
@@ -427,7 +431,10 @@ ui <- fluidPage(
                  )
         ),
         tabPanel("history",
-                 highchartOutput("timeline", height = "600px")
+                 fluidRow(column(12,highchartOutput("timeline", height = "600px"))),
+                 fluidRow(column(12,tags$div(class="tight-p-container",p("Sources: https://www.pbs.org/wgbh/pages/frontline/shows/heroin/etc/history.html"), 
+p("https://www.cdc.gov/mmwr/volumes/66/wr/mm6643e1.htm"),
+p("https://pmc.ncbi.nlm.nih.gov/articles/PMC2622774/"))))
         ),
         
         tabPanel("us_map",
@@ -436,7 +443,10 @@ ui <- fluidPage(
         ),
         
         tabPanel("deaths",
-                 highchartOutput("stateChart", height = "600px")
+                 fluidRow(
+                 column(12,highchartOutput("stateChart", height = "600px"))
+                 ),
+                 fluidRow(column(12,tags$div(class="tight-p-container",p("Source: CDC WONDER"))))
                  
         ),
         
@@ -477,7 +487,10 @@ ui <- fluidPage(
         ),
         
         tabPanel("policies",
-                 highchartOutput("timeChart", height = "600px")
+                 fluidRow(
+                   column(12,highchartOutput("timeChart", height = "600px")))
+        ,
+        fluidRow(column(12,tags$div(class="tight-p-container",p("Source: https://wonder.cdc.gov/mcd-icd10.html"))))
         )
       )
     )
@@ -1198,10 +1211,23 @@ output$timeChart <- renderHighchart({
   selected_time_chart <- currentTimeChartSelection()
   
   if (selected_time_chart == "waves") {
-    Opioid_Total_deaths |>
-      hchart(type = "column", hcaes(x = TimeFrame, y = Data))|>
-      hc_chart(height = 600) |>
-      hc_add_theme(hc_theme_flat()) |>
+    CDC_TDD <- CDC_Drug_Type_Overdose_Overtime |>
+      group_by(Year) |>
+      mutate(across(where(is.character), as.factor)) |>
+      mutate(`Drug Type` = recode(`Drug Type`,
+                                  "Other opioids" = "Prescription Opioids",
+                                  "Other synthetic narcotics" = "Synthetic Opioids",
+                                  "Other and unspecified narcotics" = "Multi-mixed opioids",
+                                  "Psychostimulants with abuse potential" = "Psychostimulants")) |>
+      filter(`Drug Type` != "Psychostimulants")
+    
+    CDC_TDD_TLLL <- CDC_TDD |>
+      group_by(Year) |>
+      mutate(Total_Deaths = sum(Deaths, na.rm = TRUE))
+    
+    CDC_TDD_TLLL |>
+      hchart(type = "column", hcaes(x = Year, y = Total_Deaths))|>
+      #hc_chart(backgroundColor = "#e8f4f8") |>
       hc_yAxis(title = list(text = "Overdose Daeths"),
                gridLineWidth = 1,
                gridLineDashStyle = "Dash",
@@ -1232,7 +1258,9 @@ output$timeChart <- renderHighchart({
                    label = list(text = "Wave 4", align = "center", 
                                 rotation = 0, verticalAlign = "top", y = -5)
                  ))) |>
+      hc_add_theme(hc_theme_flat()) |>
       hc_title(text = "Opiod Overdose Deaths Across US 1999-2023") |>
+      #hc_subtitle(text = "Sourced from https://wonder.cdc.gov/mcd-icd10.html") |>
       hc_colors(c("#FFB300")) |>
       hc_tooltip(
         pointFormatter = JS(
@@ -1244,9 +1272,9 @@ output$timeChart <- renderHighchart({
   }
   
 else if (selected_time_chart == "time") {
-  DTOO |>
-    hchart(type = "line", hcaes(x = Year, y = `Overdose Deaths`, group = `Drug Type`)) |>
-    hc_chart(height = 600) |>
+  CDC_TDD |>
+    hchart(type = "line", hcaes(x = Year, y = Deaths, group = `Drug Type`)) |>
+    #hc_chart(backgroundColor = "#e8f4f8") |>
     hc_yAxis(title = list(text = "Overdose Daeths"),
              gridLineWidth = 1,
              gridLineDashStyle = "Dash",
@@ -1256,9 +1284,8 @@ else if (selected_time_chart == "time") {
     hc_xAxis(title = list(text = "Year"),
              gridLineWidth = 1,
              gridLineDashStyle = "Dash") |>
-    hc_add_theme(hc_theme_flat()) |>
     hc_title(text = "<b>Drug Overdoses in US between 2000 and 2020 by Drug Type<b>") |>
-    hc_subtitle(text = "This data is sourced from https://www.cbo.gov/publication/58532") |>
+    hc_add_theme(hc_theme_flat()) |>
     hc_colors(c("#f1c40f", "#e67e22", "#3498db","#9b59b6", "#34495e","#2fcc71","#e74b3c")) |>
     hc_legend(enabled = TRUE, layout = "horizontal", align = "center", verticalAlign = "bottom") |>
     hc_tooltip(
@@ -1267,14 +1294,21 @@ else if (selected_time_chart == "time") {
        return 'Deaths: <b>' + Highcharts.numberFormat(this.y, 0, '.', ',') + '</b>'; 
      }"
       ))
+  
+  
 }
   
   else if (selected_time_chart == "prescriptions")
   {
-    OPO |>
-      hchart(type = "line", hcaes(x = Year, y = `Opioids Dispensed in Billions`)) |>
-      hc_chart(height = 600) |>
-      hc_yAxis(title = list(text = "Prescription Opiods Prescribed (Billions)"),
+    
+    CDC_TDD_2 <- CDC_TDD |>
+      filter(`Drug Type` == "Prescription Opioids")
+    
+    
+    CDC_TDD_2 |>
+      hchart(type = "column", hcaes(x = Year, y = Deaths)) |>
+      #hc_chart(backgroundColor = "#e8f4f8") |>
+      hc_yAxis(title = list(text = "Deaths"),
                gridLineWidth = 1,
                gridLineDashStyle = "Dash",
                labels = list(
@@ -1285,26 +1319,25 @@ else if (selected_time_chart == "time") {
                gridLineDashStyle = "Dash",
                plotLines = list(
                  list(
-                   color = "#e74b3c", dashStyle = "Dash", width = 2, value = 2016, zIndex = 5,
+                   color = "red", dashStyle = "Dash", width = 2, value = 2016, zIndex = 5,
                    label = list(text = "CARA & 21st Century Cures Act", align = "center", 
                                 rotation = 0, verticalAlign = "above", y = -5)),
                  list(
-                   color = "#e74b3c", dashStyle = "Dash", width = 2, value = 2018, zIndex = 5,
+                   color = "red", dashStyle = "Dash", width = 2, value = 2018, zIndex = 5,
                    label = list(text = "SUPPORT Act", align = "center", 
                                 rotation = 0, verticalAlign = "above", y = 10)),
                  list(
-                   color = "#e74b3c", dashStyle = "Dash", width = 2, value = 2011, zIndex = 5,
+                   color = "red", dashStyle = "Dash", width = 2, value = 2011, zIndex = 5,
                    label = list(text = "FDA Opioid REMS (Risk Evaluation and Mitigation Strategy)                                  Requirements", align = "center",rotation = 0,
                                 verticalAlign = "above", y = 25)))
       ) |>
       hc_add_theme(hc_theme_flat()) |>
-      hc_title(text = "<b>Total Amount of opioids prescribed in US across 1992 to 2020<b>") |>
-      hc_subtitle(useHTML = TRUE,text = "This data is sourced from https://www.cbo.gov/publication/58532<br/><br/>") |>
-      hc_colors(c("#e74b3c")) |>
+      hc_title(text = "<b>Amount of Prescription Opioid Deaths in US across 1992 to 2020 impacted by policies<b>") |>
+      hc_colors(c("#F8766D")) |>
       hc_tooltip(
         pointFormatter = JS(
           "function() { 
-       return 'Opiods Prescribed: <b>' + Highcharts.numberFormat(this.y, 0, '.', ',') + '</b>'; 
+       return 'Deaths: <b>' + Highcharts.numberFormat(this.y, 0, '.', ',') + '</b>'; 
      }"
         ))
   }
